@@ -5,8 +5,8 @@ import Dashboard from "./components/Dashboard";
 // Admin Components
 import AdminLayout from "./components/AdminLayout";
 import AdminDashboard from "./components/AdminDashboard";
-import ManageInventory from "./components/ManageInventory";
-import ManageUsers from "./components/ManageUsers";
+import ManageInventory from "./components/manageInventory";
+import ManageUsers from "./components/manageUsers";
 import TransactionsLog from "./components/sections/TransactionsLog";
 import Reports from "./components/sections/Reports";
 import Settings from "./components/sections/Settings";
