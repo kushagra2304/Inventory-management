@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import axios from "axios";
+const BASE_URL = import.meta.env.VITE_API_URL;
+
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -20,6 +22,8 @@ export default function LoginPage() {
       setError(""); // Clear error when role changes
     }
   };
+ 
+  
 
   // Handle Login
   const handleLogin = async (e) => {
@@ -28,7 +32,7 @@ export default function LoginPage() {
 
     try {
       const response = await axios.post(
-        "http://localhost:5000/login",
+        `${BASE_URL}/login`,
         { email, password, role },
         { withCredentials: true } // Ensure cookies work if using sessions
       );

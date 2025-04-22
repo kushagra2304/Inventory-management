@@ -4,9 +4,11 @@ import axios from 'axios';
 const ViewInventory = () => {
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const BASE_URL = process.env.REACT_APP_API_URL;
+
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/user/inventory', { withCredentials: true })
+    axios.get(`${BASE_URL}/api/user/inventory`, { withCredentials: true })
       .then(res => {
         console.log('Inventory data:', res.data);
         setInventory(res.data.inventory || []);

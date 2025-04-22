@@ -18,12 +18,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [greeting, setGreeting] = useState("Hello");
   const [items, setItems] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
+ 
+
 
   // Set time-based greeting
   useEffect(() => {
@@ -35,7 +38,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     axios
-      .get("http://localhost:5000/api/inventory/low-stock", {
+      .get(`${BASE_URL}/api/inventory/low-stock`, {
         withCredentials: true, // for sending cookies with JWT
       })
       .then((response) => {

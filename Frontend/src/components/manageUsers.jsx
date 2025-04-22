@@ -18,11 +18,12 @@ export default function ManageUsers() {
   useEffect(() => {
     fetchUsers();
   }, []);
+  const BASE_URL = process.env.REACT_APP_API_URL;
 
   const fetchUsers = async () => {
     setFetching(true);
     try {
-      const response = await axios.get("http://localhost:5000/admin/users", { withCredentials: true });
+      const response = await axios.get(`${BASE_URL}/admin/users`, { withCredentials: true });
 
       if (!response.data || !Array.isArray(response.data)) {
         throw new Error("Invalid data format");
@@ -50,7 +51,7 @@ export default function ManageUsers() {
 
     setLoading(true);
     try {
-      await axios.post("http://localhost:5000/api/auth/add-user", 
+      await axios.post(`${BASE_URL}/api/auth/add-user`, 
         { name, email, password, role }, 
         { withCredentials: true }
       );
@@ -75,7 +76,7 @@ export default function ManageUsers() {
     if (!window.confirm("Are you sure you want to delete this user?")) return;
 
     try {
-      await axios.delete(`http://localhost:5000/admin/users/${userId}`, { withCredentials: true });
+      await axios.delete(`${BASE_URL}/admin/users/${userId}`, { withCredentials: true });
       toast.success("User deleted successfully");
       fetchUsers(); // Refresh users after deletion
     } catch (error) {
@@ -86,7 +87,7 @@ export default function ManageUsers() {
 
   const handleUpdateRole = async (userId, newRole) => {
     try {
-      await axios.put(`http://localhost:5000/admin/users/${userId}/role`, 
+      await axios.put(`${BASE_URL}/admin/users/${userId}/role`, 
         { role: newRole }, 
         { withCredentials: true }
       );

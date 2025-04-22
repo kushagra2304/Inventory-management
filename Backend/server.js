@@ -15,7 +15,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // ✅ Updated CORS Configuration
 const corsOptions = {
-    origin: "http://localhost:5173", // Allow frontend origin
+    origin: "https://inventory-management-delta-three-66.vercel.app", // Allow frontend origin
     credentials: true, // Allow cookies and authorization headers
     methods: "GET,POST,PUT,DELETE",
     allowedHeaders: "Content-Type,Authorization",

@@ -15,8 +15,9 @@ export default function ManageInventory() {
     fetchInventory();
   }, []);
 
+  const BASE_URL = process.env.REACT_APP_API_URL;
   const fetchInventory = async () => {
-    const response = await fetch("http://localhost:5000/inventory");
+    const response = await fetch(`${BASE_URL}/inventory`);
     const data = await response.json();
     setInventory(data);
   };
@@ -25,7 +26,7 @@ export default function ManageInventory() {
   const handleAddItem = async () => {
     if (!compCode || !description || !quantity) return;
 
-    const response = await fetch("http://localhost:5000/inventory", {
+    const response = await fetch(`${BASE_URL}/inventory`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ comp_code: compCode, description, quantity }),
@@ -41,7 +42,7 @@ export default function ManageInventory() {
 
   // Handle deleting items
   const handleDeleteItem = async (id) => {
-    const response = await fetch(`http://localhost:5000/inventory/${id}`, { method: "DELETE" });
+    const response = await fetch(`${BASE_URL}/inventory/${id}`, { method: "DELETE" });
 
     if (response.ok) {
       fetchInventory(); // Refresh inventory after deleting

@@ -19,11 +19,14 @@ export default function ManageTransactions() {
     fetchTransactions();
   }, []);
 
+  const BASE_URL = process.env.REACT_APP_API_URL;
+
+
   // Function to fetch transaction logs
   const fetchTransactions = async () => {
     setFetching(true);
     try {
-      const response = await axios.get("http://localhost:5000/inventory/transactions", { withCredentials: true });
+      const response = await axios.get(`${BASE_URL}/inventory/transactions`, { withCredentials: true });
 
       if (!response.data || !Array.isArray(response.data)) {
         throw new Error("Invalid data format");
@@ -62,7 +65,7 @@ export default function ManageTransactions() {
         transaction_type: transactionType 
       };
       
-      await axios.post("http://localhost:5000/inventory/transaction", newTransaction, { withCredentials: true });
+      await axios.post(`${BASE_URL}/inventory/transaction`, newTransaction, { withCredentials: true });
       
       toast.success("Transaction added successfully");
       setItemCode(""); // Reset fields

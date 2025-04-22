@@ -1,77 +1,73 @@
 import React, { useEffect, useRef, useState } from "react";
-import Quagga from "@ericblade/quagga2"; // Barcode scanning library
+import { BrowserMultiFormatReader } from '@zxing/browser';
 import axios from "axios";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, AlertCircle } from "lucide-react";
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 const ScanProduct = () => {
-  const scannerRef = useRef(null);
+  const videoRef = useRef(null);
   const [scannedCode, setScannedCode] = useState(null);
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Start the scanner
   useEffect(() => {
-    Quagga.init({
-      inputStream: {
-        name: "Live",
-        type: "LiveStream",
-        target: scannerRef.current,
-        constraints: {
-          facingMode: "environment",
-        },
-      },
-      decoder: {
-        readers: ["code_128_reader"],
-      },
-    }, (err) => {
-      if (err) {
-        console.error("Error initializing Quagga:", err);
-        return;
-      }
-      Quagga.start();
-    });
+    const codeReader = new BrowserMultiFormatReader();
+    
 
-    // Handle barcode detection
-    Quagga.onDetected(handleDetected);
+
+    let stopScanner = null;
+
+    const startScanner = async () => {
+      try {
+        const resultStream = await codeReader.decodeFromVideoDevice(
+          null,
+          videoRef.current,
+          async (result, error) => {
+            if (result) {
+              const code = result.getText();
+              if (code !== scannedCode) {
+                setScannedCode(code);
+                setLoading(true);
+                setError("");
+                try {
+                  const res = await axios.get(`${BASE_URL}/api/products/barcode/${code}`);
+                  setProduct(res.data);
+                } catch (err) {
+                  setProduct(null);
+                  setError("Product not found in inventory.");
+                }
+                setLoading(false);
+              }
+            }
+          }
+        );
+
+        // Store the stop function to use on cleanup
+        stopScanner = () => resultStream.stop();
+      } catch (err) {
+        console.error("Error initializing ZXing:", err);
+        setError("Failed to access camera for scanning.");
+      }
+    };
+
+    startScanner();
 
     return () => {
-      Quagga.stop();
-      Quagga.offDetected(handleDetected);
+      if (stopScanner) stopScanner();
     };
-  }, []);
-
-  Quagga.onDetected(function(result) {
-    console.log('Detected barcode:', result.codeResult.code);  // Check what Quagga is reading
-    // Send the barcode data to the backend
-  });
-  
-  const handleDetected = async (data) => {
-    const code = data.codeResult.code;
-    if (code !== scannedCode) {
-      setScannedCode(code);
-      setLoading(true);
-      setError("");
-      try {
-        const res = await axios.get(`http://localhost:5000/api/products/barcode/${code}`);
-        setProduct(res.data);
-      } catch (err) {
-        setProduct(null);
-        setError("Product not found in inventory.");
-      }
-      setLoading(false);
-    }
-  };
+  }, [scannedCode]);
 
   return (
     <div className="p-6 space-y-6">
       <h2 className="text-3xl font-bold text-center text-gray-800 mb-4">📸 Scan Product</h2>
 
       <div
-        ref={scannerRef}
-        className="w-full h-[300px] rounded-lg border-2 border-dashed border-indigo-400"
-      />
+        className="w-full h-[300px] rounded-lg border-2 border-dashed border-indigo-400 overflow-hidden"
+      >
+        <video ref={videoRef} className="w-full h-full object-cover" />
+      </div>
 
       {loading && (
         <div className="flex justify-center items-center text-indigo-600 gap-2">

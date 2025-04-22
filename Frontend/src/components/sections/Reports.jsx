@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
+
 const Reports = () => {
   const [reports, setReports] = useState([]);
 
@@ -8,10 +9,11 @@ const Reports = () => {
   useEffect(() => {
     fetchReports();
   }, []);
+  const BASE_URL = process.env.REACT_APP_API_URL;
 
   const fetchReports = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/inventory/reports');
+      const response = await axios.get(`${BASE_URL}/inventory/reports`);
       setReports(response.data);
     } catch (error) {
       console.error('Error fetching reports:', error);

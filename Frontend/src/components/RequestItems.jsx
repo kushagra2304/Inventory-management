@@ -12,9 +12,11 @@ const RequestItems = () => {
   useEffect(() => {
     fetchRequests();
   }, []);
+  const BASE_URL = process.env.REACT_APP_API_URL;
+
 
   const fetchRequests = () => {
-    axios.get('http://localhost:5000/api/user/requests', { withCredentials: true })
+    axios.get(`${BASE_URL}/api/user/requests`, { withCredentials: true })
       .then(res => {
         setRequests(res.data.requests);
         setLoading(false);
@@ -34,7 +36,7 @@ const RequestItems = () => {
       return;
     }
 
-    axios.post('http://localhost:5000/api/user/request-item', {
+    axios.post(`${BASE_URL}/api/user/request-item`, {
       item_id: parseInt(itemId), // Ensure number
       quantity: parseInt(quantity)
     }, { withCredentials: true })
