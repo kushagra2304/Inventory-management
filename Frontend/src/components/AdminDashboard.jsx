@@ -7,6 +7,7 @@ import {
   UserCog,
   FileBarChart2,
   Settings,
+  Camera,
 } from "lucide-react";
 import axios from "axios";
 import {
@@ -78,6 +79,12 @@ const AdminDashboard = () => {
       icon: <Settings className="w-6 h-6 text-indigo-600" />,
       description: "Configure system preferences.",
       path: "/admin/settings",
+    },
+    {
+      title: "Scan Product",
+      icon: <Camera className="w-6 h-6 text-indigo-600" />,
+      description: "Scan barcodes and fetch product details.",
+      path: "/admin/scan",
     },
   ];
 

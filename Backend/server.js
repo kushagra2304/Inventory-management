@@ -31,7 +31,7 @@ const db = mysql.createPool({
     password: process.env.DB_PASS,
     database: "inventory_db",
     port: process.env.DB_PORT,
-});
+}); // Use promise-based API for async/await
 
 // ✅ Checking Database Connection
 db.getConnection((err, connection) => {
@@ -452,7 +452,26 @@ app.get("/api/inventory/low-stock", authenticateToken, (req, res) => {
     });
 });
 
-
+//BARDCODE SCANNER
+app.get("/api/products/barcode/:barcode", (req, res) => {
+    const { barcode } = req.params;
+  
+    // Query the database to get the product by barcode
+    db.query("SELECT * FROM inventory WHERE barcode = ?", [barcode], (error, results) => {
+      if (error) {
+        console.error('Error fetching product by barcode:', error);
+        return res.status(500).json({ error: 'Server error' });
+      }
+  
+      // If no product found, return 404
+      if (results.length === 0) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+  
+      // Return the first product if found
+      res.json(results[0]);
+    });
+  });
 
 // ✅ Logout Route
 app.post("/logout", (req, res) => {

@@ -10,6 +10,7 @@ import ManageUsers from "./components/manageUsers";
 import TransactionsLog from "./components/sections/TransactionsLog";
 import Reports from "./components/sections/Reports";
 import Settings from "./components/sections/Settings";
+import ScanProduct from "./components/sections/ScanProduct";
 
 // User Components
 import UserLayout from "./components/UserLayout";
@@ -34,6 +35,7 @@ function App() {
           <Route path="transactions" element={<TransactionsLog />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="scan" element={<ScanProduct />} />
         </Route>
       {/* User Routes (Wrapped in UserLayout) */}
       <Route path="/user/*" element={<UserLayout />}>
