@@ -484,18 +484,45 @@ app.get("/api/products/barcode/:barcode", (req, res) => {
   });
 
   // Express route
-app.post('/api/purchase', async (req, res) => {
+  app.post('/api/purchase', async (req, res) => {
     const items = req.body.items;
   
-    for (const item of items) {
-      await Product.updateOne(
-        { comp_code: item.comp_code },
-        { $inc: { quantity: -item.qty } }
-      );
+    // Validate if the items are provided in the request body
+    if (!items || items.length === 0) {
+      return res.status(400).json({ message: 'No items provided for purchase' });
     }
   
-    res.json({ message: 'Purchase completed!' });
+    try {
+      for (const item of items) {
+        // Validate that the item has a comp_code and quantity
+        if (!item.comp_code || !item.qty) {
+          return res.status(400).json({ message: 'Invalid item data' });
+        }
+  
+        const product = await Product.findOne({ comp_code: item.comp_code });
+  
+        if (!product) {
+          return res.status(404).json({ message: `Product with code ${item.comp_code} not found` });
+        }
+  
+        if (product.quantity < item.qty) {
+          return res.status(400).json({ message: `Insufficient stock for ${item.comp_code}` });
+        }
+  
+        // Update the product stock
+        await Product.updateOne(
+          { comp_code: item.comp_code },
+          { $inc: { quantity: -item.qty } }
+        );
+      }
+  
+      res.json({ message: 'Purchase completed successfully!' });
+    } catch (err) {
+      console.error("Error during purchase:", err);
+      res.status(500).json({ message: 'Internal server error' });
+    }
   });
+  
   
 
 // ✅ Logout Route
