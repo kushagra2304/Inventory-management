@@ -28,6 +28,7 @@ const ScanProduct = () => {
               if (code !== scannedCode) {
                 setScannedCode(code);
                 setLoading(true);
+                setTimeout(() => setScannedCode(null), 3000);
                 setError("");
                 try {
                   const res = await axios.get(`${BASE_URL}/api/products/barcode/${code}`);
