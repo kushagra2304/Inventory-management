@@ -3,17 +3,14 @@ import { BrowserMultiFormatReader } from '@zxing/browser';
 import axios from "axios";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, AlertCircle } from "lucide-react";
-
 const BASE_URL = import.meta.env.VITE_API_URL;
 
 const ScanProduct = () => {
   const videoRef = useRef(null);
   const [scannedCode, setScannedCode] = useState(null);
-  const [product, setProduct] = useState(null);
+  const [cart, setCart] = useState([]);  // Holds the cart items
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [cart, setCart] = useState([]); // To store added products
-  const [totalAmount, setTotalAmount] = useState(0); // Total bill amount
 
   useEffect(() => {
     const codeReader = new BrowserMultiFormatReader();
@@ -34,9 +31,14 @@ const ScanProduct = () => {
                 setError("");
                 try {
                   const res = await axios.get(`${BASE_URL}/api/products/barcode/${code}`);
-                  setProduct(res.data);
+                  const product = res.data;
+
+                  // Add the scanned product to the cart
+                  setCart((prevCart) => {
+                    const updatedCart = [...prevCart, { ...product, qty: 1 }];
+                    return updatedCart;
+                  });
                 } catch (err) {
-                  setProduct(null);
                   setError("Product not found in inventory.");
                 }
                 setLoading(false);
@@ -60,51 +62,24 @@ const ScanProduct = () => {
     };
   }, [scannedCode]);
 
-  // Add product to cart
-  const addToCart = () => {
-    if (product && product.quantity > 0) {
-      const existingProduct = cart.find(item => item.id === product.id);
-      if (existingProduct) {
-        // If product is already in cart, increase the quantity
-        setCart(prevCart =>
-          prevCart.map(item =>
-            item.id === product.id
-              ? { ...item, quantity: item.quantity + 1 }
-              : item
-          )
-        );
-      } else {
-        // If it's a new product, add it to the cart
-        setCart(prevCart => [...prevCart, { ...product, quantity: 1 }]);
-      }
-
-      // Update the total amount
-      setTotalAmount(prevAmount => prevAmount + product.price);
-    } else {
-      setError("Product out of stock.");
+  // Handle Buy Now button click
+  const handleBuyNow = async () => {
+    if (cart.length === 0) {
+      setError("Your cart is empty!");
+      return;
     }
-  };
 
-  // Handle the purchase
-  const handlePurchase = async () => {
     try {
-      const items = cart.map(item => ({
-        comp_code: item.comp_code,
-        qty: item.quantity
-      }));
-  
-      const response = await axios.post(`${BASE_URL}/api/purchase`, { items });
-      
-      // Reset cart after successful purchase
-      setCart([]);
-      setTotalAmount(0);
-      alert(response.data.message); // Purchase completed message
+      const res = await axios.post(`${BASE_URL}/api/purchase`, { items: cart });
+      if (res.data.message === "Purchase completed successfully!") {
+        // Clear the cart after successful purchase
+        setCart([]);
+        alert("Purchase completed successfully!");
+      }
     } catch (err) {
-      console.error("Error during purchase:", err);
-      setError("Failed to complete the purchase.");
+      setError("An error occurred while completing the purchase.");
     }
   };
-  
 
   return (
     <div className="p-6 space-y-6">
@@ -128,52 +103,32 @@ const ScanProduct = () => {
         </div>
       )}
 
-      {product && (
-        <Card className="max-w-md mx-auto border-indigo-300 bg-indigo-50">
-          <CardContent className="p-4 space-y-3">
-            <h3 className="text-xl font-semibold text-indigo-800">Product Details</h3>
-            <p><strong>Code:</strong> {product.comp_code}</p>
-            <p><strong>Name:</strong> {product.name}</p>
-            <p><strong>Description:</strong> {product.description || "No description"}</p>
-            <p><strong>Stock:</strong> {product.quantity}</p>
-            <p><strong>Price:</strong> ${product.price}</p>
-            <img
-              src={product.image || "https://via.placeholder.com/150"}
-              alt="Product"
-              className="w-full h-40 object-cover rounded-lg border"
-            />
-            <button
-              onClick={addToCart}
-              className="mt-4 bg-indigo-600 text-white py-2 px-4 rounded"
-            >
-              Add to Cart
-            </button>
-          </CardContent>
-        </Card>
-      )}
-
-      {cart.length > 0 && (
-        <div className="mt-6">
-          <h3 className="text-xl font-semibold text-gray-800">Your Cart</h3>
-          <ul className="space-y-3">
-            {cart.map((item, index) => (
-              <li key={index} className="flex justify-between items-center">
-                <p>{item.name} x {item.quantity}</p>
-                <p>${(item.price * item.quantity).toFixed(2)}</p>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-4 text-lg font-semibold">
-            Total Amount: ${totalAmount.toFixed(2)}
-          </div>
-          <button
-            onClick={handlePurchase}
-            className="mt-4 bg-green-600 text-white py-2 px-4 rounded"
-          >
-            Buy Now
-          </button>
-        </div>
-      )}
+      {/* Cart Section */}
+      <div className="space-y-4">
+        {cart.length > 0 ? (
+          <Card className="max-w-md mx-auto border-indigo-300 bg-indigo-50">
+            <CardContent className="p-4 space-y-3">
+              <h3 className="text-xl font-semibold text-indigo-800">Your Cart</h3>
+              <ul className="space-y-2">
+                {cart.map((item, index) => (
+                  <li key={index} className="flex justify-between">
+                    <span>{item.name}</span>
+                    <span>Qty: {item.qty}</span>
+                  </li>
+                ))}
+              </ul>
+              <button
+                className="w-full bg-indigo-600 text-white py-2 rounded-lg mt-4"
+                onClick={handleBuyNow}
+              >
+                Buy Now
+              </button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="text-gray-500 text-center">Your cart is empty</div>
+        )}
+      </div>
     </div>
   );
 };
