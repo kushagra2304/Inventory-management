@@ -15,7 +15,17 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // ✅ Updated CORS Configuration
 const corsOptions = {
-    origin: "https://inventory-management-kush.vercel.app", // Allow frontend origin
+    origin: function (origin, callback) {
+        const allowedOrigins = [
+          'https://inventory-management-kush.vercel.app',
+          'http://localhost:5173'
+        ];
+        if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
     credentials: true, // Allow cookies and authorization headers
     methods: "GET,POST,PUT,DELETE",
     allowedHeaders: "Content-Type,Authorization",
@@ -472,6 +482,21 @@ app.get("/api/products/barcode/:barcode", (req, res) => {
       res.json(results[0]);
     });
   });
+
+  // Express route
+app.post('/api/purchase', async (req, res) => {
+    const items = req.body.items;
+  
+    for (const item of items) {
+      await Product.updateOne(
+        { comp_code: item.comp_code },
+        { $inc: { quantity: -item.qty } }
+      );
+    }
+  
+    res.json({ message: 'Purchase completed!' });
+  });
+  
 
 // ✅ Logout Route
 app.post("/logout", (req, res) => {
