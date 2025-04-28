@@ -9,7 +9,7 @@ import ManageInventory from "./components/manageInventory";
 import ManageUsers from "./components/manageUsers";
 import TransactionsLog from "./components/sections/TransactionsLog";
 import Reports from "./components/sections/Reports";
-import Settings from "./components/sections/Settings";
+import Settings from "./components/sections/Settings"; // ✅ Correctly importing Settings.jsx now
 import ScanProduct from "./components/sections/ScanProduct";
 
 // User Components
@@ -23,27 +23,27 @@ function App() {
     <Routes>
       {/* Login Route */}
       <Route path="/" element={<LoginPage />} />
-      
+
       {/* General Dashboard Route */}
       <Route path="/dashboard" element={<Dashboard />} />
 
-      {/* Admin Routes (Wrapped in AdminLayout) */}
+      {/* Admin Routes */}
       <Route path="/admin/*" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="inventory" element={<ManageInventory />} />
-          <Route path="users" element={<ManageUsers />} />
-          <Route path="transactions" element={<TransactionsLog />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="scan" element={<ScanProduct />} />
-        </Route>
-      {/* User Routes (Wrapped in UserLayout) */}
-      <Route path="/user/*" element={<UserLayout />}>
-  <Route index element={<UserDashboard />} />
-  <Route path="inventory" element={<ViewInventory />} />
-  <Route path="requests" element={<RequestItems />} />
-</Route>
+        <Route index element={<AdminDashboard />} />
+        <Route path="inventory" element={<ManageInventory />} />
+        <Route path="users" element={<ManageUsers />} />
+        <Route path="transactions" element={<TransactionsLog />} />
+        <Route path="reports" element={<Reports />} />
+        <Route path="settings" element={<Settings />} /> {/* ✅ Settings page */}
+        <Route path="scan" element={<ScanProduct />} />
+      </Route>
 
+      {/* User Routes */}
+      <Route path="/user/*" element={<UserLayout />}>
+        <Route index element={<UserDashboard />} />
+        <Route path="inventory" element={<ViewInventory />} />
+        <Route path="requests" element={<RequestItems />} />
+      </Route>
     </Routes>
   );
 }

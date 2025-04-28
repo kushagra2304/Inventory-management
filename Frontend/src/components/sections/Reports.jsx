@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 
 const Reports = () => {
@@ -9,7 +10,7 @@ const Reports = () => {
   useEffect(() => {
     fetchReports();
   }, []);
-  const BASE_URL = process.env.REACT_APP_API_URL;
+  
 
   const fetchReports = async () => {
     try {

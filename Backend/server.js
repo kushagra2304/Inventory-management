@@ -486,42 +486,74 @@ app.get("/api/products/barcode/:barcode", (req, res) => {
   // Express route
   app.post('/api/purchase', async (req, res) => {
     const items = req.body.items;
-  
-    // Validate if the items are provided in the request body
+
     if (!items || items.length === 0) {
-      return res.status(400).json({ message: 'No items provided for purchase' });
+        return res.status(400).json({ message: 'No items provided for purchase' });
     }
-  
+
+    const connection = mysql.createConnection(dbConfig);
+    connection.beginTransaction();
+
     try {
-      for (const item of items) {
-        // Validate that the item has a comp_code and quantity
-        if (!item.comp_code || !item.qty) {
-          return res.status(400).json({ message: 'Invalid item data' });
+        for (const item of items) {
+            if (!item.comp_code || !item.qty) {
+                return res.status(400).json({ message: 'Invalid item data' });
+            }
+
+            // Fetch the product
+            const [rows] = connection.execute(
+                'SELECT * FROM inventory WHERE comp_code = ?',
+                [item.comp_code]
+            );
+
+            const product = rows[0];
+
+            if (!product) {
+                throw new Error(`Product with code ${item.comp_code} not found`);
+            }
+
+            if (product.quantity < item.qty) {
+                throw new Error(`Insufficient stock for ${item.comp_code}`);
+            }
+
+            // Reduce the quantity from inventory
+            connection.execute(
+                'UPDATE inventory SET quantity = quantity - ? WHERE comp_code = ?',
+                [item.qty, item.comp_code]
+            );
+
+            // Insert into transactions table
+            connection.execute(
+                'INSERT INTO transaction (comp_code, qty, status, timestamp) VALUES (?, ?, ?, NOW())',
+                [item.comp_code, item.qty, 'issued']
+            );
         }
-  
-        const product = await Product.findOne({ comp_code: item.comp_code });
-  
-        if (!product) {
-          return res.status(404).json({ message: `Product with code ${item.comp_code} not found` });
-        }
-  
-        if (product.quantity < item.qty) {
-          return res.status(400).json({ message: `Insufficient stock for ${item.comp_code}` });
-        }
-  
-        // Update the product stock
-        await Product.updateOne(
-          { comp_code: item.comp_code },
-          { $inc: { quantity: -item.qty } }
-        );
-      }
-  
-      res.json({ message: 'Purchase completed successfully!' });
+
+        connection.commit();
+        res.json({ message: 'Purchase completed successfully!' });
     } catch (err) {
-      console.error("Error during purchase:", err);
-      res.status(500).json({ message: 'Internal server error' });
+        connection.rollback();
+        console.error("Error during purchase:", err);
+        res.status(500).json({ message: 'Internal server error', error: err.message });
+    } finally {
+        connection.end();
     }
+});
+
+// API endpoint to fetch all products
+app.get('/api/inventory', (req, res) => {
+    const query = 'SELECT * FROM inventory ORDER BY created_at DESC LIMIT 3'; // Fetch last 3 records (adjust query as needed)
+    
+    db.query(query, (err, results) => {
+      if (err) {
+        console.error('Error fetching inventory data:', err);
+        res.status(500).json({ error: 'Internal server error' });
+      } else {
+        res.json({ inventory: results });
+      }
+    });
   });
+
   
   
 
