@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { toast } from "react-hot-toast";
+const BASE_URL = import.meta.env.VITE_API_URL;
+
 
 export default function ManageTransactions() {
   const [transactions, setTransactions] = useState([]);
@@ -19,7 +21,7 @@ export default function ManageTransactions() {
     fetchTransactions();
   }, []);
 
-  const BASE_URL = process.env.REACT_APP_API_URL;
+  
 
 
   // Function to fetch transaction logs

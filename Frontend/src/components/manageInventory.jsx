@@ -3,6 +3,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+const BASE_URL = import.meta.env.VITE_API_URL;
+
 
 export default function ManageInventory() {
   const [inventory, setInventory] = useState([]);
@@ -15,7 +17,7 @@ export default function ManageInventory() {
     fetchInventory();
   }, []);
 
-  const BASE_URL = process.env.REACT_APP_API_URL;
+ 
   const fetchInventory = async () => {
     const response = await fetch(`${BASE_URL}/inventory`);
     const data = await response.json();

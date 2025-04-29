@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+const BASE_URL = import.meta.env.VITE_API_URL;
+
 
 const RequestItems = () => {
   const [itemId, setItemId] = useState(''); // Item ID
@@ -12,7 +14,7 @@ const RequestItems = () => {
   useEffect(() => {
     fetchRequests();
   }, []);
-  const BASE_URL = process.env.REACT_APP_API_URL;
+ 
 
 
   const fetchRequests = () => {

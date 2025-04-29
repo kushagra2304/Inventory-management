@@ -5,6 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { toast } from "react-hot-toast";
+const BASE_URL = import.meta.env.VITE_API_URL;
+
+
 
 export default function ManageUsers() {
   const [users, setUsers] = useState([]);
@@ -18,7 +21,7 @@ export default function ManageUsers() {
   useEffect(() => {
     fetchUsers();
   }, []);
-  const BASE_URL = process.env.REACT_APP_API_URL;
+  
 
   const fetchUsers = async () => {
     setFetching(true);
