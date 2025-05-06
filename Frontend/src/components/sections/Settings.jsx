@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { ForecastCard } from "@/components/sections/ForecastCard";
 
-// Use the environment variable for the API URL
 const BASE_URL = import.meta.env.VITE_API_URL;
 
 export default function Settings() {
@@ -12,50 +11,25 @@ export default function Settings() {
   useEffect(() => {
     async function fetchData() {
       try {
-        // Fetch inventory data from the backend
         const productResponse = await fetch(`${BASE_URL}/api/inventory`);
         const productResult = await productResponse.json();
-        
-        // Assume the backend returns an array of inventory items (products)
-        setProducts(productResult.inventory || []);
 
-        // Calculate forecasted data for each product
+        const inventory = productResult.inventory || [];
+        setProducts(inventory);
+
         const usageFetched = {};
 
-        for (const product of productResult.inventory) {
-          const usageResponse = await fetch(`${BASE_URL}/api/usage/${product.id}`);
-          const usageResult = await usageResponse.json();
-          usageFetched[product.id] = usageResult.usageData || [];
-        }
-
-        // Now apply forecast logic for each product
-        const forecastedData = {};
-
-        for (const productId in usageFetched) {
-          const data = usageFetched[productId];
-
-          if (data.length < 2) {
-            forecastedData[productId] = data[data.length - 1]; // If there's not enough data, use the last month's data
-          } else {
-            const prevMonthUsage = data[data.length - 2];
-            const currentMonthUsage = data[data.length - 1];
-
-            const differencePercentage =
-              ((currentMonthUsage - prevMonthUsage) / prevMonthUsage) * 100;
-
-            let forecastedQuantity = currentMonthUsage;
-
-            if (differencePercentage > 0) {
-              forecastedQuantity += Math.round((differencePercentage / 100) * currentMonthUsage);
-            } else if (differencePercentage < 0) {
-              forecastedQuantity = Math.max(currentMonthUsage, prevMonthUsage);
-            }
-
-            forecastedData[productId] = forecastedQuantity;
+        for (const product of inventory) {
+          try {
+            const usageResponse = await fetch(`${BASE_URL}/api/usage/${product.comp_code}`);
+            const usageResult = await usageResponse.json();
+            usageFetched[product.comp_code] = usageResult;
+          } catch (err) {
+            console.error(`Failed to fetch usage for product ${product.comp_code}`, err);
           }
         }
 
-        setUsageData(forecastedData);
+        setUsageData(usageFetched);
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -71,14 +45,25 @@ export default function Settings() {
   }
 
   return (
-    <div className="p-6 flex flex-wrap gap-6">
-      {products.map((product) => (
-        <ForecastCard
-          key={product.id}
-          productName={product.description} // Use 'description' from inventory table
-          usageData={[usageData[product.id] || 0]} // Send forecasted quantity as usageData
-        />
-      ))}
-    </div>
+    <div className="flex flex-wrap gap-6 p-6">
+    {products.length === 0 && <p>No products found.</p>}
+    {products.map((product) => {
+      const usage = usageData[product.comp_code] || {};
+  
+      return (
+        <div key={product.id} className="border p-4 rounded-md shadow-md w-64">
+          <p className="font-semibold mb-2">{product.description}</p>
+          <ForecastCard
+            productName={product.description}
+            usageData={[
+              `Current Stock: ${usage.currentStock ?? "N/A"}`,
+              `Monthly Usage: ${usage.averageMonthlyUsage ?? "N/A"}`,
+              `Stock lasts (months): ${usage.estimatedMonthsLeft ?? "N/A"}`
+            ]}
+          />
+        </div>
+      );
+    })}
+  </div>
   );
 }

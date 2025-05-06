@@ -7,7 +7,6 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import axios from "axios";
 const BASE_URL = import.meta.env.VITE_API_URL;
 
-
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,17 +14,13 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  // Handle Role Switching
   const handleRoleChange = (newRole) => {
     if (newRole) {
       setRole(newRole);
       setError(""); // Clear error when role changes
     }
   };
- 
-  
 
-  // Handle Login
   const handleLogin = async (e) => {
     e.preventDefault();
     setError(""); // Reset error message
@@ -34,14 +29,12 @@ export default function LoginPage() {
       const response = await axios.post(
         `${BASE_URL}/login`,
         { email, password, role },
-        { withCredentials: true } // Ensure cookies work if using sessions
+        { withCredentials: true }
       );
 
-      // Store user data
-      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("jwtToken", response.data.token);
       localStorage.setItem("role", response.data.user.role);
 
-      // Redirect based on role
       navigate(response.data.user.role === "admin" ? "/admin" : "/user");
     } catch (err) {
       setError(err.response?.data?.message || "Invalid email or password!");
@@ -49,39 +42,77 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col justify-center items-center min-h-screen bg-gray-100 px-4">
-      <Card className="w-full max-w-md p-6 shadow-lg bg-white rounded-lg">
+    <div className="min-h-screen flex items-center justify-center bg-blue-100 px-4">
+      <Card className="w-full max-w-md bg-white p-6 rounded-2xl shadow-lg">
         <CardHeader>
-          <CardTitle className="text-center text-xl font-semibold">
-            {role === "admin" ? "Admin" : "User"} Login
+          <CardTitle className="text-center text-2xl font-bold text-[#010D2A]">
+          <span className="inline-block text-4xl font-bold text-[#010D2A] border-b-4 border-red-600 pb-1">
+  SA <span className="text-red-600 text-5xl">R</span> AS
+</span>
+
           </CardTitle>
         </CardHeader>
+
         <CardContent>
-          {/* Role Toggle */}
-          <ToggleGroup type="single" value={role} onValueChange={handleRoleChange} className="mb-4 flex justify-center">
-            <ToggleGroupItem value="admin" className="px-4 py-2">Admin</ToggleGroupItem>
-            <ToggleGroupItem value="user" className="px-4 py-2">User</ToggleGroupItem>
+          <ToggleGroup
+            type="single"
+            value={role}
+            onValueChange={handleRoleChange}
+            className="mb-6 flex justify-center"
+          >
+            <ToggleGroupItem
+              value="admin"
+              className={`px-4 py-2 rounded-full text-sm ${
+                role === "admin" ? "bg-[#010D2A] text-white" : "bg-gray-100"
+              }`}
+            >
+              Admin
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="user"
+              className={`px-4 py-2 rounded-full text-sm ${
+                role === "user" ? "bg-[#010D2A] text-white" : "bg-gray-100"
+              }`}
+            >
+              User
+            </ToggleGroupItem>
           </ToggleGroup>
 
-          {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-4">
-            <Input 
-              type="email" 
-              placeholder="Email" 
-              value={email} 
-              onChange={(e) => setEmail(e.target.value)} 
-              required 
+            <Input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="rounded-full px-4 py-2 border border-gray-300"
+              required
             />
-            <Input 
-              type="password" 
-              placeholder="Password" 
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)} 
-              required 
+            <Input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="rounded-full px-4 py-2 border border-gray-300"
+              required
             />
             {error && <p className="text-red-500 text-sm">{error}</p>}
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white">Login</Button>
+            <Button
+              type="submit"
+              className="w-full bg-[#010D2A] hover:bg-blue-950 text-white py-2 rounded-full"
+            >
+              Login
+            </Button>
           </form>
+
+          <div className="mt-6 text-center text-sm text-gray-600">
+            Don&apos;t have an account?{" "}
+            <span
+              className="text-blue-600 hover:underline cursor-pointer font-medium"
+              onClick={() => navigate(`/signup/${role}`)}
+            >
+              Sign up as {role}
+            </span>
+          </div>
         </CardContent>
       </Card>
     </div>

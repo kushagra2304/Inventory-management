@@ -15,17 +15,17 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // ✅ Updated CORS Configuration
 const corsOptions = {
-    origin: function (origin, callback) {
+    origin: (origin, callback) => {
         const allowedOrigins = [
-          'https://inventory-management-kush.vercel.app',
-          'http://localhost:5173'
+        //   'https://inventory-management-kush.vercel.app',
+          'http://localhost:5173',
         ];
         if (!origin || allowedOrigins.includes(origin)) {
           callback(null, true);
         } else {
           callback(new Error('Not allowed by CORS'));
         }
-      },
+    },
     credentials: true, // Allow cookies and authorization headers
     methods: "GET,POST,PUT,DELETE",
     allowedHeaders: "Content-Type,Authorization",
@@ -116,7 +116,7 @@ app.post("/login", (req, res) => {
             // Set cookie securely
             res.cookie("token", token, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
+                secure: process.env.NODE_ENV === "production"?true:false,
                 sameSite: "Strict",
             });
 
@@ -248,16 +248,20 @@ app.get("/inventory", (req, res) => {
 
 // Add Inventory Item
 app.post("/inventory", (req, res) => {
-  const { comp_code, description, quantity } = req.body;
-  if (!comp_code || !description || !quantity) {
-    return res.status(400).json({ error: "All fields are required" });
-  }
-  const query = "INSERT INTO inventory (comp_code, description, quantity) VALUES (?, ?, ?)";
-  db.query(query, [comp_code, description, quantity], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: "Item added successfully" });
+    const { comp_code, description, quantity, barcode, category } = req.body;
+    if (!comp_code || !description || !quantity || !barcode || !category) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+    const query = `
+      INSERT INTO inventory (comp_code, description, quantity, barcode, category)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+    db.query(query, [comp_code, description, quantity, barcode, category], (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ message: "Item added successfully" });
+    });
   });
-});
+  
 
 // Delete Inventory Item
 app.delete("/inventory/:id", (req, res) => {
@@ -540,9 +544,9 @@ app.get("/api/products/barcode/:barcode", (req, res) => {
     }
 });
 
-// API endpoint to fetch all products
+// // API endpoint to fetch all products
 app.get('/api/inventory', (req, res) => {
-    const query = 'SELECT * FROM inventory ORDER BY created_at DESC LIMIT 3'; // Fetch last 3 records (adjust query as needed)
+    const query = 'SELECT * FROM inventory'; // Fetch all records 
     
     db.query(query, (err, results) => {
       if (err) {
@@ -554,6 +558,74 @@ app.get('/api/inventory', (req, res) => {
     });
   });
 
+  // Usage route - fetch usage data by product ID
+  app.get('/api/usage/:itemCode', (req, res) => {
+    const itemCode = req.params.itemCode;
+  
+    const query = `
+      SELECT 
+        item_code,
+        SUM(CASE WHEN transaction_type = 'issued' THEN quantity ELSE 0 END) AS total_issued,
+        COUNT(*) AS transaction_count,
+        MONTH(transaction_date) as month,
+        YEAR(transaction_date) as year
+      FROM transaction
+      WHERE item_code = ?
+      GROUP BY YEAR(transaction_date), MONTH(transaction_date)
+      ORDER BY year DESC, month DESC
+    `;
+  
+    db.query(query, [itemCode], (err, results) => {
+      if (err) {
+        console.error("Forecast Fetch Error:", err);
+        return res.status(500).json({ error: "Database query error" });
+      }
+  
+      // Fallbacks if no transactions exist
+      const monthlyUsages = results.map(r => r.total_issued);
+      const averageMonthlyUsage = monthlyUsages.length > 0
+        ? Math.round(monthlyUsages.reduce((a, b) => a + b, 0) / monthlyUsages.length)
+        : 0;
+  
+      // Get current stock
+      const stockQuery = `SELECT quantity FROM inventory WHERE comp_code = ?`;
+      db.query(stockQuery, [itemCode], (err, stockResults) => {
+        if (err) {
+          console.error("Stock Fetch Error:", err);
+          return res.status(500).json({ error: "Stock fetch failed" });
+        }
+  
+        const currentStock = stockResults[0]?.quantity || 0;
+        const estimatedMonthsLeft = averageMonthlyUsage > 0
+          ? Math.floor(currentStock / averageMonthlyUsage)
+          : currentStock > 0 ? "N/A" : 0;
+  
+        res.json({
+          item_code: itemCode,
+          currentStock,
+          averageMonthlyUsage,
+          estimatedMonthsLeft
+        });
+      });
+    });
+  });
+  
+  //view all inventory items
+//   app.get('/api/inventory/all', authenticateJWT, (req, res) => {
+//     const query = 'SELECT * FROM inventory';
+  
+//     db.query(query, (err, results) => {
+//       if (err) {
+//         console.error('Error fetching products:', err);
+//         return res.status(500).json({ success: false, message: 'Server Error' });
+//       }
+//       res.status(200).json({ success: true, products: results });
+//     });
+//   });
+  
+  
+
+  
   
   
 

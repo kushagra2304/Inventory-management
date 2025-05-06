@@ -11,6 +11,7 @@ import TransactionsLog from "./components/sections/TransactionsLog";
 import Reports from "./components/sections/Reports";
 import Settings from "./components/sections/Settings"; // ✅ Correctly importing Settings.jsx now
 import ScanProduct from "./components/sections/ScanProduct";
+import ViewAllProducts from "./components/sections/viewAllProducts";
 
 // User Components
 import UserLayout from "./components/UserLayout";
@@ -36,6 +37,7 @@ function App() {
         <Route path="reports" element={<Reports />} />
         <Route path="settings" element={<Settings />} /> {/* ✅ Settings page */}
         <Route path="scan" element={<ScanProduct />} />
+        <Route path="products" element={<ViewAllProducts />} />
       </Route>
 
       {/* User Routes */}

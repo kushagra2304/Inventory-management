@@ -18,17 +18,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+
 const BASE_URL = import.meta.env.VITE_API_URL;
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [greeting, setGreeting] = useState("Hello");
   const [items, setItems] = useState([]);
+  const [allProducts, setAllProducts] = useState([]); // 🔧 New state
   const [selectedItem, setSelectedItem] = useState(null);
- 
 
-
-  // Set time-based greeting
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour < 12) setGreeting("Good Morning");
@@ -36,10 +35,14 @@ const AdminDashboard = () => {
     else setGreeting("Good Evening");
   }, []);
 
+  // Fetch low stock items
   useEffect(() => {
     axios
       .get(`${BASE_URL}/api/inventory/low-stock`, {
-        withCredentials: true, // for sending cookies with JWT
+        withCredentials: true,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("jwtToken")}`,
+        },
       })
       .then((response) => {
         setItems(response.data.lowStock);
@@ -49,15 +52,37 @@ const AdminDashboard = () => {
       });
   }, []);
 
-  // Filter items with quantity < 10
+  // 🔧 Fetch all products
+  useEffect(() => {
+    axios
+      .get(`${BASE_URL}/api/inventory/all`, {
+        withCredentials: true,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("jwtToken")}`,
+        },
+      })
+      .then((response) => {
+        setAllProducts(response.data.products || []);
+      })
+      .catch((error) => {
+        console.error("Error fetching all products:", error);
+      });
+  }, []);
+
   const lowStockItems = items.filter((item) => item.quantity < 10);
 
   const dashboardItems = [
     {
-      title: "Inventory Management",
+      title: "Manage Inventory",
       icon: <PackageCheck className="w-6 h-6 text-indigo-600" />,
       description: "Add, edit, and monitor stock levels.",
       path: "/admin/inventory",
+    },
+    {
+      title: "View All Products",
+      icon: <PackageCheck className="w-6 h-6 text-green-600" />,
+      description: "See a complete list of all inventory products.",
+      path: "/admin/products",
     },
     {
       title: "Transactions Log",
@@ -78,7 +103,7 @@ const AdminDashboard = () => {
       path: "/admin/reports",
     },
     {
-      title: "Settings & Permissions",
+      title: "Forecast & Predictions",
       icon: <Settings className="w-6 h-6 text-indigo-600" />,
       description: "Configure system preferences.",
       path: "/admin/settings",
@@ -90,6 +115,7 @@ const AdminDashboard = () => {
       path: "/admin/scan",
     },
   ];
+  
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -105,50 +131,43 @@ const AdminDashboard = () => {
 
       {/* Low Stock Section */}
       <div>
-        <div className="flex items-center mb-4 space-x-2 ">
-          <AlertTriangle className="text-red-500 w-6 h-6" />
-          <h2 className="text-2xl font-semibold text-red-600 ">Low Stock Alerts</h2>
-        </div>
-        {lowStockItems.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {lowStockItems.map((item, idx) => (
-              <Dialog key={idx}>
-                <DialogTrigger asChild>
-                  <Card
-                    className="border border-red-200 bg-red-50 shadow-sm hover:shadow-md transition rounded-xl cursor-pointer"
-                    onClick={() => setSelectedItem(item)}
-                  >
-                    <CardContent className="p-4">
-                      <h3 className="text-lg font-semibold text-red-700">{item.comp_code}</h3>
-                      <p className="text-sm text-red-500">Only {item.quantity} left in stock</p>
-                    </CardContent>
-                  </Card>
-                </DialogTrigger>
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle className="text-xl">Item Details</DialogTitle>
-                    <DialogDescription>Detailed view of the selected inventory item.</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <img
-                      src={item.image || "https://via.placeholder.com/150"}
-                      alt="Item"
-                      className="w-full h-48 object-cover rounded-xl border"
-                    />
-                    <div>
-                      <p><strong>Code:</strong> {item.comp_code}</p>
-                      <p><strong>Description:</strong> {item.description || "No description"}</p>
-                      <p><strong>Quantity:</strong> {item.quantity}</p>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            ))}
+  <div className="flex items-center mb-4 space-x-2">
+    <AlertTriangle className="text-red-500 w-6 h-6" />
+    <h2 className="text-2xl font-semibold text-red-600">Low Stock Alerts</h2>
+  </div>
+
+  {lowStockItems.length > 0 ? (
+    <div className="space-y-4">
+      {lowStockItems.map((item, idx) => {
+        const maxStock = 100; // Can be dynamic later
+        const percent = Math.min((item.quantity / maxStock) * 100, 100);
+
+        // Bar color logic
+        let barColor = "bg-green-500";
+        if (percent < 50) barColor = "bg-yellow-500";
+        if (percent < 20) barColor = "bg-red-600";
+
+        return (
+          <div key={idx}>
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-sm font-medium text-red-700">{item.comp_code}</span>
+              <span className="text-xs text-gray-600">{item.quantity} in stock</span>
+            </div>
+            <div className="w-full h-2 bg-red-100 rounded-full">
+              <div
+                className={`h-2 ${barColor} rounded-full transition-all duration-300`}
+                style={{ width: `${percent}%` }}
+              />
+            </div>
           </div>
-        ) : (
-          <p className="text-gray-500">All items are sufficiently stocked.</p>
-        )}
-      </div>
+        );
+      })}
+    </div>
+  ) : (
+    <p className="text-gray-500">All items are sufficiently stocked.</p>
+  )}
+</div>
+
 
       {/* Dashboard Tools */}
       <div>

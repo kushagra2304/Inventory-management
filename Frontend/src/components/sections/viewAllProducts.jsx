@@ -1,0 +1,89 @@
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
+const BASE_URL = import.meta.env.VITE_API_URL;
+
+const ViewAllProducts = () => {
+  const [products, setProducts] = useState([]);
+  const [selectedItem, setSelectedItem] = useState(null);
+
+  useEffect(() => {
+    axios
+      .get(`${BASE_URL}/api/inventory`, {
+        withCredentials: true,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("jwtToken")}`,
+        },
+      })
+      .then((response) => {
+        setProducts(response.data.inventory);
+      })
+      .catch((error) => {
+        console.error("Error fetching products:", error);
+      });
+  }, []);
+
+  return (
+    <div className="p-6 space-y-6">
+      <h2 className="text-3xl font-semibold text-gray-800 text-center">
+        All Inventory Products
+      </h2>
+      {products.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {products.map((item, idx) => (
+            <Dialog key={idx}>
+              <DialogTrigger asChild>
+                <Card
+                  className="border bg-white shadow hover:shadow-lg transition rounded-xl cursor-pointer"
+                  onClick={() => setSelectedItem(item)}
+                >
+                  <CardContent className="p-4">
+                    <h3 className="text-lg font-semibold text-gray-800">
+                      {item.comp_code}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      Quantity: {item.quantity}
+                    </p>
+                  </CardContent>
+                </Card>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="text-xl">Product Details</DialogTitle>
+                  <DialogDescription>
+                    Detailed view of the selected inventory item.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <img
+                    src={item.image || "https://via.placeholder.com/150"}
+                    alt="Item"
+                    className="w-full h-48 object-cover rounded-xl border"
+                  />
+                  <div>
+                    <p><strong>Code:</strong> {item.comp_code}</p>
+                    <p><strong>Description:</strong> {item.description || "No description"}</p>
+                    <p><strong>Quantity:</strong> {item.quantity}</p>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          ))}
+        </div>
+      ) : (
+        <p className="text-gray-500 text-center">No products found.</p>
+      )}
+    </div>
+  );
+};
+
+export default ViewAllProducts;
