@@ -237,7 +237,13 @@ app.put("/admin/users/:id/role", authenticateToken, (req, res) => {
   });
 });
 
-
+app.get("/api/inventory-pie", (req, res) => {
+    db.query("SELECT * FROM inventory ORDER BY created_at DESC", (err, results) => {
+      if (err) return res.status(500).json({ error: err.message });
+      console.log("Inventory Pie Data Sent to Frontend:", results);
+      res.json({products:results});
+    });
+  });
 // Get All Inventory Items
 app.get("/inventory", (req, res) => {
   db.query("SELECT * FROM inventory ORDER BY created_at DESC", (err, results) => {
@@ -396,53 +402,7 @@ app.get('/inventory/reports', async (req, res) => {
 });
 
 
-//USERS
-// Route to get all inventory items (for user view only)
-app.get("/api/user/inventory", (req, res) => {
-    const query = "SELECT id, comp_code, quantity, description FROM inventory"; 
-    db.query(query, (err, results) => {
-        if (err) {
-            console.error("Database Query Error:", err);
-            return res.status(500).json({ message: "Database Error" });
-        }
-        // console.log("Fetched Inventory Data:", results); // ✅ Check what is fetched
-        res.json({ inventory: results });
-    });
-});
 
-
-app.get('/api/user/requests',authenticateToken, (req, res) => {
-    
-    const userId = req.user.id;
-    console.log("USER is:", userId);
-
-    const query = "SELECT * FROM item_requests WHERE user_id = ?";
-    db.query(query, [userId], (err, results) => {
-        if (err) return res.status(500).json({ message: "Database error" });
-        res.json({ requests: results });
-    });
-});
-
-app.post('/api/user/request-item', authenticateToken, (req, res) => {
-    const { item_id, quantity } = req.body;
-    const userId = req.user.id;
-
-    console.log("Request body:", req.body); // For debugging
-    console.log("User ID:", userId); // For debugging
-
-    const query = `
-        INSERT INTO item_requests (user_id, item_id, quantity, status, request_date) 
-        VALUES (?, ?, ?, 'Pending', NOW())
-    `;
-
-    db.query(query, [userId, item_id, quantity], (err, result) => {
-        if (err) {
-            console.error("Database error:", err);
-            return res.status(500).json({ message: "Database error", error: err.sqlMessage });
-        }
-        res.json({ message: "Request submitted successfully" });
-    });
-});
 
 
 // ✅ Fetch Low Stock Items (quantity < 10)
@@ -487,62 +447,78 @@ app.get("/api/products/barcode/:barcode", (req, res) => {
     });
   });
 
-  // Express route
-  app.post('/api/purchase', async (req, res) => {
-    const items = req.body.items;
+  app.post("/inventory/transaction-scan", (req, res) => {
+    const { item_code, quantity, transaction_type } = req.body;
 
-    if (!items || items.length === 0) {
-        return res.status(400).json({ message: 'No items provided for purchase' });
+    // Input validation
+    if (!item_code || !quantity) {
+        return res.status(400).json({ error: "Item code and quantity are required." });
     }
 
-    const connection = mysql.createConnection(dbConfig);
-    connection.beginTransaction();
+    db.getConnection((err, connection) => {
+        if (err) return res.status(500).json({ error: "Database connection error: " + err.message });
 
-    try {
-        for (const item of items) {
-            if (!item.comp_code || !item.qty) {
-                return res.status(400).json({ message: 'Invalid item data' });
+        connection.beginTransaction((err) => {
+            if (err) {
+                connection.release();
+                return res.status(500).json({ error: "Transaction start error: " + err.message });
             }
 
-            // Fetch the product
-            const [rows] = connection.execute(
-                'SELECT * FROM inventory WHERE comp_code = ?',
-                [item.comp_code]
-            );
+            const updateQuery = "UPDATE inventory SET quantity = quantity - ? WHERE comp_code = ? AND quantity >= ?";
+            const updateValues = [quantity, item_code, quantity];
 
-            const product = rows[0];
+            console.log("Executing inventory update:", { query: updateQuery, values: updateValues });
 
-            if (!product) {
-                throw new Error(`Product with code ${item.comp_code} not found`);
-            }
+            connection.query(updateQuery, updateValues, (err, updateResult) => {
+                if (err) {
+                    console.error("Inventory Update Error:", err);
+                    return connection.rollback(() => {
+                        connection.release();
+                        res.status(500).json({ error: "Inventory update error: " + err.message });
+                    });
+                }
 
-            if (product.quantity < item.qty) {
-                throw new Error(`Insufficient stock for ${item.comp_code}`);
-            }
+                if (updateResult.affectedRows === 0) {
+                    return connection.rollback(() => {
+                        connection.release();
+                        res.status(400).json({ error: "Invalid operation. Not enough stock or item code does not exist." });
+                    });
+                }
 
-            // Reduce the quantity from inventory
-            connection.execute(
-                'UPDATE inventory SET quantity = quantity - ? WHERE comp_code = ?',
-                [item.qty, item.comp_code]
-            );
+                const insertQuery = "INSERT INTO transaction (item_code, quantity, transaction_type, transaction_date) VALUES (?, ?, 'issued', NOW())";
+                const insertValues = [item_code, quantity, transaction_type];
 
-            // Insert into transactions table
-            connection.execute(
-                'INSERT INTO transaction (comp_code, qty, status, timestamp) VALUES (?, ?, ?, NOW())',
-                [item.comp_code, item.qty, 'issued']
-            );
-        }
+                console.log("Inserting transaction:", { query: insertQuery, values: insertValues });
 
-        connection.commit();
-        res.json({ message: 'Purchase completed successfully!' });
-    } catch (err) {
-        connection.rollback();
-        console.error("Error during purchase:", err);
-        res.status(500).json({ message: 'Internal server error', error: err.message });
-    } finally {
-        connection.end();
-    }
+                connection.query(insertQuery, insertValues, (err) => {
+                    if (err) {
+                        console.error("Transaction Log Error:", err);
+                        return connection.rollback(() => {
+                            connection.release();
+                            res.status(500).json({ error: "Transaction log error: " + err.message });
+                        });
+                    }
+
+                    connection.commit((err) => {
+                        if (err) {
+                            console.error("Transaction Commit Error:", err);
+                            return connection.rollback(() => {
+                                connection.release();
+                                res.status(500).json({ error: "Transaction commit error: " + err.message });
+                            });
+                        }
+
+                        connection.release();
+                        res.json({ message: "Purchase completed successfully." });
+                    });
+                });
+            });
+        });
+    });
 });
+
+
+
 
 // // API endpoint to fetch all products
 app.get('/api/inventory', (req, res) => {
@@ -622,7 +598,210 @@ app.get('/api/inventory', (req, res) => {
 //       res.status(200).json({ success: true, products: results });
 //     });
 //   });
+
+//USERS
+// Route to get all inventory items (for user view only)
+app.get("/api/user/inventory", (req, res) => {
+    const query = "SELECT id, comp_code, quantity, description, barcode, category FROM inventory"; 
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error("Database Query Error:", err);
+            return res.status(500).json({ message: "Database Error" });
+        }
+        // console.log("Fetched Inventory Data:", results); // ✅ Check what is fetched
+        res.json({ inventory: results });
+    });
+});
+
+app.get('/api/user/inventory', (req, res) => {
+    const query = 'SELECT * FROM inventory'; // Fetch all records 
+    
+    db.query(query, (err, results) => {
+      if (err) {
+        console.error('Error fetching inventory data:', err);
+        res.status(500).json({ error: 'Internal server error' });
+      } else {
+        res.json({ inventory: results });
+      }
+    });
+  });
+
+  // Usage route - fetch usage data by product ID
+  app.get('/api/usage/user/:itemCode', (req, res) => {
+    const itemCode = req.params.itemCode;
   
+    const query = `
+      SELECT 
+        item_code,
+        SUM(CASE WHEN transaction_type = 'issued' THEN quantity ELSE 0 END) AS total_issued,
+        COUNT(*) AS transaction_count,
+        MONTH(transaction_date) as month,
+        YEAR(transaction_date) as year
+      FROM transaction
+      WHERE item_code = ?
+      GROUP BY YEAR(transaction_date), MONTH(transaction_date)
+      ORDER BY year DESC, month DESC
+    `;
+  
+    db.query(query, [itemCode], (err, results) => {
+      if (err) {
+        console.error("Forecast Fetch Error:", err);
+        return res.status(500).json({ error: "Database query error" });
+      }
+  
+      // Fallbacks if no transactions exist
+      const monthlyUsages = results.map(r => r.total_issued);
+      const averageMonthlyUsage = monthlyUsages.length > 0
+        ? Math.round(monthlyUsages.reduce((a, b) => a + b, 0) / monthlyUsages.length)
+        : 0;
+  
+      // Get current stock
+      const stockQuery = `SELECT quantity FROM inventory WHERE comp_code = ?`;
+      db.query(stockQuery, [itemCode], (err, stockResults) => {
+        if (err) {
+          console.error("Stock Fetch Error:", err);
+          return res.status(500).json({ error: "Stock fetch failed" });
+        }
+  
+        const currentStock = stockResults[0]?.quantity || 0;
+        const estimatedMonthsLeft = averageMonthlyUsage > 0
+          ? Math.floor(currentStock / averageMonthlyUsage)
+          : currentStock > 0 ? "N/A" : 0;
+  
+        res.json({
+          item_code: itemCode,
+          currentStock,
+          averageMonthlyUsage,
+          estimatedMonthsLeft
+        });
+      });
+    });
+  });
+  
+
+// app.get('/api/user/requests',authenticateToken, (req, res) => {
+    
+//     const userId = req.user.id;
+//     console.log("USER is:", userId);
+
+//     const query = "SELECT * FROM item_requests WHERE user_id = ?";
+//     db.query(query, [userId], (err, results) => {
+//         if (err) return res.status(500).json({ message: "Database error" });
+//         res.json({ requests: results });
+//     });
+// });
+
+// app.post('/api/user/request-item', authenticateToken, (req, res) => {
+//     const { item_id, quantity } = req.body;
+//     const userId = req.user.id;
+
+//     console.log("Request body:", req.body); // For debugging
+//     console.log("User ID:", userId); // For debugging
+
+//     const query = `
+//         INSERT INTO item_requests (user_id, item_id, quantity, status, request_date) 
+//         VALUES (?, ?, ?, 'Pending', NOW())
+//     `;
+
+//     db.query(query, [userId, item_id, quantity], (err, result) => {
+//         if (err) {
+//             console.error("Database error:", err);
+//             return res.status(500).json({ message: "Database error", error: err.sqlMessage });
+//         }
+//         res.json({ message: "Request submitted successfully" });
+//     });
+// });
+  
+//BARDCODE SCANNER
+app.get("/api/user/products/barcode/:barcode", (req, res) => {
+  const { barcode } = req.params;
+
+  // Query the database to get the product by barcode
+  db.query("SELECT * FROM inventory WHERE barcode = ?", [barcode], (error, results) => {
+    if (error) {
+      console.error('Error fetching product by barcode:', error);
+      return res.status(500).json({ error: 'Server error' });
+    }
+
+    // If no product found, return 404
+    if (results.length === 0) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Return the first product if found
+    res.json(results[0]);
+  });
+});
+
+app.post("user/inventory/transaction-scan", (req, res) => {
+  const { item_code, quantity, transaction_type } = req.body;
+
+  // Input validation
+  if (!item_code || !quantity) {
+      return res.status(400).json({ error: "Item code and quantity are required." });
+  }
+
+  db.getConnection((err, connection) => {
+      if (err) return res.status(500).json({ error: "Database connection error: " + err.message });
+
+      connection.beginTransaction((err) => {
+          if (err) {
+              connection.release();
+              return res.status(500).json({ error: "Transaction start error: " + err.message });
+          }
+
+          const updateQuery = "UPDATE inventory SET quantity = quantity - ? WHERE comp_code = ? AND quantity >= ?";
+          const updateValues = [quantity, item_code, quantity];
+
+          console.log("Executing inventory update:", { query: updateQuery, values: updateValues });
+
+          connection.query(updateQuery, updateValues, (err, updateResult) => {
+              if (err) {
+                  console.error("Inventory Update Error:", err);
+                  return connection.rollback(() => {
+                      connection.release();
+                      res.status(500).json({ error: "Inventory update error: " + err.message });
+                  });
+              }
+
+              if (updateResult.affectedRows === 0) {
+                  return connection.rollback(() => {
+                      connection.release();
+                      res.status(400).json({ error: "Invalid operation. Not enough stock or item code does not exist." });
+                  });
+              }
+
+              const insertQuery = "INSERT INTO transaction (item_code, quantity, transaction_type, transaction_date) VALUES (?, ?, 'issued', NOW())";
+              const insertValues = [item_code, quantity, transaction_type];
+
+              console.log("Inserting transaction:", { query: insertQuery, values: insertValues });
+
+              connection.query(insertQuery, insertValues, (err) => {
+                  if (err) {
+                      console.error("Transaction Log Error:", err);
+                      return connection.rollback(() => {
+                          connection.release();
+                          res.status(500).json({ error: "Transaction log error: " + err.message });
+                      });
+                  }
+
+                  connection.commit((err) => {
+                      if (err) {
+                          console.error("Transaction Commit Error:", err);
+                          return connection.rollback(() => {
+                              connection.release();
+                              res.status(500).json({ error: "Transaction commit error: " + err.message });
+                          });
+                      }
+
+                      connection.release();
+                      res.json({ message: "Purchase completed successfully." });
+                  });
+              });
+          });
+      });
+  });
+});
   
 
   

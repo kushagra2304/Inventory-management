@@ -17,7 +17,8 @@ import ViewAllProducts from "./components/sections/viewAllProducts";
 import UserLayout from "./components/UserLayout";
 import UserDashboard from "./components/UserDashboard";
 import ViewInventory from "./components/ViewInventory";
-import RequestItems from "./components/RequestItems";
+import UserForecast from "./components/UserForecast";
+import UserScan from "./components/UserScan";
 
 function App() {
   return (
@@ -44,7 +45,8 @@ function App() {
       <Route path="/user/*" element={<UserLayout />}>
         <Route index element={<UserDashboard />} />
         <Route path="inventory" element={<ViewInventory />} />
-        <Route path="requests" element={<RequestItems />} />
+        <Route path="predictions" element={<UserForecast />} />
+        <Route path="read" element={<UserScan />} />
       </Route>
     </Routes>
   );

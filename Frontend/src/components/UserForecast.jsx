@@ -3,7 +3,7 @@ import { ForecastCard } from "@/components/sections/ForecastCard";
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
-export default function Settings() {
+export default function UserForecast() {
   const [products, setProducts] = useState([]);
   const [usageData, setUsageData] = useState({});
   const [loading, setLoading] = useState(true);
@@ -11,7 +11,7 @@ export default function Settings() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const productResponse = await fetch(`${BASE_URL}/api/inventory`);
+        const productResponse = await fetch(`${BASE_URL}/api/user/inventory`);
         const productResult = await productResponse.json();
 
         const inventory = productResult.inventory || [];
@@ -21,7 +21,7 @@ export default function Settings() {
 
         for (const product of inventory) {
           try {
-            const usageResponse = await fetch(`${BASE_URL}/api/usage/${product.comp_code}`);
+            const usageResponse = await fetch(`${BASE_URL}/api/usage/user/${product.comp_code}`);
             const usageResult = await usageResponse.json();
             usageFetched[product.comp_code] = usageResult;
           } catch (err) {

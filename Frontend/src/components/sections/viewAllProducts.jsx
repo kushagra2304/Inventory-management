@@ -15,6 +15,7 @@ const BASE_URL = import.meta.env.VITE_API_URL;
 const ViewAllProducts = () => {
   const [products, setProducts] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     axios
@@ -25,21 +26,41 @@ const ViewAllProducts = () => {
         },
       })
       .then((response) => {
-        setProducts(response.data.inventory);
+        setProducts(response.data.inventory || []);
       })
       .catch((error) => {
         console.error("Error fetching products:", error);
       });
   }, []);
 
+  const filteredProducts = products.filter((item) => {
+    const search = searchTerm.toLowerCase();
+    return (
+      item.comp_code?.toLowerCase().includes(search) ||
+      item.description?.toLowerCase().includes(search) ||
+      item.category?.toLowerCase().includes(search)
+    );
+  });
+
   return (
     <div className="p-6 space-y-6">
       <h2 className="text-3xl font-semibold text-gray-800 text-center">
         All Inventory Products
       </h2>
-      {products.length > 0 ? (
+
+      <div className="flex justify-center mb-4">
+        <input
+          type="text"
+          placeholder="Search by code, description, or category..."
+          className="w-full max-w-md px-4 rounded-full py-2 border border-gray-300"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
+      {filteredProducts.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {products.map((item, idx) => (
+          {filteredProducts.map((item, idx) => (
             <Dialog key={idx}>
               <DialogTrigger asChild>
                 <Card
@@ -47,12 +68,15 @@ const ViewAllProducts = () => {
                   onClick={() => setSelectedItem(item)}
                 >
                   <CardContent className="p-4">
-                    <h3 className="text-lg font-semibold text-gray-800">
-                      {item.comp_code}
+                    <img
+                      src={item.image || "https://via.placeholder.com/150"}
+                      alt="Item"
+                      className="w-full h-48 object-cover rounded-xl border"
+                    />
+                    <h3 className="text-lg font-semibold text-gray-800 mt-4">
+                      {item.description}
                     </h3>
-                    <p className="text-sm text-gray-500">
-                      Quantity: {item.quantity}
-                    </p>
+                    <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
                   </CardContent>
                 </Card>
               </DialogTrigger>
@@ -72,7 +96,8 @@ const ViewAllProducts = () => {
                   <div>
                     <p><strong>Code:</strong> {item.comp_code}</p>
                     <p><strong>Description:</strong> {item.description || "No description"}</p>
-                    <p><strong>Quantity:</strong> {item.quantity}</p>
+                    <p><strong>Total Inventory:</strong> {item.quantity}</p>
+                    <p><strong>Barcode:</strong> {item.barcode || "Not available"}</p>
                   </div>
                 </div>
               </DialogContent>

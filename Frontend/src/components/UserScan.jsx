@@ -6,7 +6,7 @@ import { Loader2, AlertCircle } from "lucide-react";
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
-const ScanProduct = () => {
+const UserScan = () => {
   const videoRef = useRef(null);
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -48,7 +48,7 @@ const ScanProduct = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.get(`${BASE_URL}/api/products/barcode/${code}`);
+      const res = await axios.get(`${BASE_URL}/api/user/products/barcode/${code}`);
       const product = res.data;
   
       console.log("Fetched product:", product);
@@ -98,7 +98,7 @@ const ScanProduct = () => {
   
         console.log("Sending purchase payload:", payload);
   
-        const res = await axios.post(`${BASE_URL}/inventory/transaction-scan`, payload);
+        const res = await axios.post(`${BASE_URL}/user/inventory/transaction-scan`, payload);
   
         if (res.status !== 200) {
           throw new Error(`Purchase failed for ${item.comp_code}`);
@@ -184,4 +184,4 @@ const ScanProduct = () => {
   );
 };
 
-export default ScanProduct;
+export default UserScan;

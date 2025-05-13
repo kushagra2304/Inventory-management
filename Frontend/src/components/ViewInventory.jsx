@@ -1,102 +1,114 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
 const BASE_URL = import.meta.env.VITE_API_URL;
 
-
 const ViewInventory = () => {
-  const [inventory, setInventory] = useState([]);
-  const [loading, setLoading] = useState(true);
-
+  const [products, setProducts] = useState([]);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    axios.get(`${BASE_URL}/api/user/inventory`, { withCredentials: true })
-      .then(res => {
-        console.log('Inventory data:', res.data);
-        setInventory(res.data.inventory || []);
-        setLoading(false);
+    axios
+      .get(`${BASE_URL}/api/inventory`, {
+        withCredentials: true,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("jwtToken")}`,
+        },
       })
-      .catch(err => {
-        console.error('Error fetching inventory:', err);
-        setLoading(false);
+      .then((response) => {
+        setProducts(response.data.inventory || []);
+      })
+      .catch((error) => {
+        console.error("Error fetching products:", error);
       });
   }, []);
 
+  const filteredProducts = products.filter((item) => {
+    const search = searchTerm.toLowerCase();
+    return (
+      item.comp_code?.toLowerCase().includes(search) ||
+      item.description?.toLowerCase().includes(search) ||
+      item.category?.toLowerCase().includes(search)
+    );
+  });
+
   return (
-    <div style={styles.container}>
-      <h2 style={styles.heading}>📋 Inventory Table</h2>
-      {loading ? (
-        <p style={styles.loading}>Loading...</p>
+    <div className="p-6 space-y-6">
+      <h2 className="text-3xl font-semibold text-gray-800 text-center">
+        All Inventory Products
+      </h2>
+
+      <div className="flex justify-center mb-4">
+        <input
+          type="text"
+          placeholder="Search by code, description, or category..."
+          className="w-full max-w-md px-4 rounded-full py-2 border border-gray-300"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
+      {filteredProducts.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredProducts.map((item, idx) => (
+            <Dialog key={idx}>
+              <DialogTrigger asChild>
+                <Card
+                  className="border bg-white shadow hover:shadow-lg transition rounded-xl cursor-pointer"
+                  onClick={() => setSelectedItem(item)}
+                >
+                  <CardContent className="p-4">
+                    <img
+                      src={item.image || "https://via.placeholder.com/150"}
+                      alt="Item"
+                      className="w-full h-48 object-cover rounded-xl border"
+                    />
+                    <h3 className="text-lg font-semibold text-gray-800 mt-4">
+                      {item.description}
+                    </h3>
+                    <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
+                  </CardContent>
+                </Card>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="text-xl">Product Details</DialogTitle>
+                  <DialogDescription>
+                    Detailed view of the selected inventory item.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <img
+                    src={item.image || "https://via.placeholder.com/150"}
+                    alt="Item"
+                    className="w-full h-48 object-cover rounded-xl border"
+                  />
+                  <div>
+                    <p><strong>Code:</strong> {item.comp_code}</p>
+                    <p><strong>Description:</strong> {item.description || "No description"}</p>
+                    <p><strong>Total Inventory:</strong> {item.quantity}</p>
+                    <p><strong>Barcode:</strong> {item.barcode || "Not available"}</p>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          ))}
+        </div>
       ) : (
-        <>
-          {Array.isArray(inventory) && inventory.length > 0 ? (
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>S.No</th>
-                  <th style={styles.th}>Description</th>
-                  <th style={styles.th}>Code</th>
-                  <th style={styles.th}>Quantity</th>
-                </tr>
-              </thead>
-              <tbody>
-                {inventory.map((item, index) => (
-                  <tr key={item.id}>
-                    <td style={styles.td}>{index + 1}</td>
-                    <td style={styles.td}>{item.description}</td>
-                    <td style={styles.td}>{item.comp_code}</td>
-                    <td style={styles.td}>{item.quantity}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p style={styles.noData}>No items available.</p>
-          )}
-        </>
+        <p className="text-gray-500 text-center">No products found.</p>
       )}
     </div>
   );
 };
 
 export default ViewInventory;
-
-const styles = {
-  container: {
-    maxWidth: '1000px',
-    margin: '30px auto',
-    padding: '20px',
-    fontFamily: 'Arial, sans-serif',
-  },
-  heading: {
-    textAlign: 'center',
-    marginBottom: '20px',
-    color: '#333',
-    fontSize: '28px',
-  },
-  loading: {
-    textAlign: 'center',
-    fontSize: '18px',
-    color: '#555',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-  },
-  th: {
-    border: '1px solid #ddd',
-    padding: '12px',
-    backgroundColor: '#f2f2f2',
-    color: '#333',
-    textAlign: 'left',
-  },
-  td: {
-    border: '1px solid #ddd',
-    padding: '12px',
-    textAlign: 'left',
-  },
-  noData: {
-    textAlign: 'center',
-    fontSize: '18px',
-    color: '#888',
-  },
-};

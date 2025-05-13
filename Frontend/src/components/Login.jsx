@@ -63,7 +63,9 @@ export default function LoginPage() {
             <ToggleGroupItem
               value="admin"
               className={`px-4 py-2 rounded-full text-sm ${
-                role === "admin" ? "bg-[#010D2A] text-white" : "bg-gray-100"
+                role === "admin"
+        ? "bg-[#010D2A] text-white shadow-md border border-[#010D2A]"
+        : "bg-gray-200 text-gray-700"
               }`}
             >
               Admin
@@ -71,7 +73,9 @@ export default function LoginPage() {
             <ToggleGroupItem
               value="user"
               className={`px-4 py-2 rounded-full text-sm ${
-                role === "user" ? "bg-[#010D2A] text-white" : "bg-gray-100"
+                role === "user"
+        ? "bg-[#010D2A] text-white shadow-md border border-[#010D2A]"
+        : "bg-gray-200 text-gray-700"
               }`}
             >
               User
@@ -86,6 +90,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               className="rounded-full px-4 py-2 border border-gray-300"
               required
+              autoComplete="off"
             />
             <Input
               type="password"
@@ -94,6 +99,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="rounded-full px-4 py-2 border border-gray-300"
               required
+              autoComplete="off"
             />
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <Button
@@ -104,7 +110,7 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
+          {/* <div className="mt-6 text-center text-sm text-gray-600">
             Don&apos;t have an account?{" "}
             <span
               className="text-blue-600 hover:underline cursor-pointer font-medium"
@@ -112,7 +118,7 @@ export default function LoginPage() {
             >
               Sign up as {role}
             </span>
-          </div>
+          </div> */}
         </CardContent>
       </Card>
     </div>
