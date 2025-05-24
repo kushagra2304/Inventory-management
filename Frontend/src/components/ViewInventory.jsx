@@ -76,13 +76,17 @@ const ViewInventory = () => {
                     <h3 className="text-lg font-semibold text-gray-800 mt-4">
                       {item.description}
                     </h3>
-                    <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
+                    <p className="text-sm text-gray-500">
+                      Quantity: {item.quantity}
+                    </p>
                   </CardContent>
                 </Card>
               </DialogTrigger>
               <DialogContent className="max-w-md">
                 <DialogHeader>
-                  <DialogTitle className="text-xl">Product Details</DialogTitle>
+                  <DialogTitle className="text-xl">
+                    Product Details
+                  </DialogTitle>
                   <DialogDescription>
                     Detailed view of the selected inventory item.
                   </DialogDescription>
@@ -93,11 +97,33 @@ const ViewInventory = () => {
                     alt="Item"
                     className="w-full h-48 object-cover rounded-xl border"
                   />
-                  <div>
-                    <p><strong>Code:</strong> {item.comp_code}</p>
-                    <p><strong>Description:</strong> {item.description || "No description"}</p>
-                    <p><strong>Total Inventory:</strong> {item.quantity}</p>
-                    <p><strong>Barcode:</strong> {item.barcode || "Not available"}</p>
+                  <div className="space-y-1 text-sm text-gray-700">
+                    <p>
+                      <strong>Code:</strong> {item.comp_code}
+                    </p>
+                    <p>
+                      <strong>Description:</strong>{" "}
+                      {item.description || "No description"}
+                    </p>
+                    <p>
+                      <strong>Category:</strong> {item.category || "N/A"}
+                    </p>
+                    <p>
+                      <strong>Unit:</strong> {item.unit_type || "N/A"}
+                    </p>
+                    <p>
+                      <strong>Weight:</strong> {item.weight || "N/A"}
+                    </p>
+                    <p>
+                      <strong>Price:</strong> ₹{item.price || "0.00"}
+                    </p>
+                    <p>
+                      <strong>Total Inventory:</strong> {item.quantity}
+                    </p>
+                    <p>
+                      <strong>Barcode:</strong>{" "}
+                      {item.barcode || "Not available"}
+                    </p>
                   </div>
                 </div>
               </DialogContent>

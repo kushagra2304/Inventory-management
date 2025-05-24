@@ -84,13 +84,13 @@ const AdminDashboard = () => {
     {
       title: "Forecast & Predictions",
       icon: <Sun className="w-6 h-6 text-indigo-600" />,
-      description: "Configure system preferences.",
+      description: "View inventory trends and predict future stock requirements.",
       path: "/user/predictions",
     },
     {
       title: "Scan Product",
       icon: <Camera className="w-6 h-6 text-indigo-600" />,
-      description: "Scan barcodes and fetch product details.",
+      description: "Scan barcodes, fetch product details, and purchase.",
       path: "/user/read",
     },
   ];

@@ -240,34 +240,132 @@ app.put("/admin/users/:id/role", authenticateToken, (req, res) => {
 app.get("/api/inventory-pie", (req, res) => {
     db.query("SELECT * FROM inventory ORDER BY created_at DESC", (err, results) => {
       if (err) return res.status(500).json({ error: err.message });
-      console.log("Inventory Pie Data Sent to Frontend:", results);
+      // console.log("Inventory Pie Data Sent to Frontend:", results);
       res.json({products:results});
     });
   });
-// Get All Inventory Items
+
+// app.post("/inventory/sales-trend", async (req, res) => {
+//   const { items } = req.body;
+//   if (!items || !Array.isArray(items)) {
+//     return res.status(400).json({ error: "Invalid input" });
+//   }
+
+//   try {
+//     // Get today's date
+//     const today = new Date();
+//     const result = [];
+
+//     // Iterate over last 3 months
+//     for (let i = 2; i >= 0; i--) {
+//       const targetDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
+//       const year = targetDate.getFullYear();
+//       const month = targetDate.getMonth() + 1; // JS months are 0-indexed
+
+//       const monthLabel = targetDate.toLocaleString("default", { month: "short" }); // "Jan", "Feb", etc.
+//       const row = { month: `${monthLabel} ${year}` };
+
+//       for (const code of items) {
+//         const [data] = await db.promise().query(
+//           `SELECT 
+//               SUM(quantity) as total 
+//            FROM transaction 
+//            WHERE item_code = ? 
+//              AND transaction_type = 'issued'
+//              AND MONTH(transaction_date) = ? 
+//              AND YEAR(transaction_date) = ?`,
+//           [code, month, year]
+//         );
+
+//         row[code] = data[0].total || 0;
+//       }
+
+//       result.push(row);
+//     }
+
+//     res.json(result);
+//   } catch (err) {
+//     console.error("Sales Trend Error:", err);
+//     res.status(500).json({ error: "Internal server error" });
+//   }
+// });
+
+// app.get('/inventory/all-products', async (req, res) => {
+//   try {
+//     const products = db.query('SELECT * FROM inventory');
+//     res.json(products);
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: 'Server error' });
+//   }
+// });
 app.get("/inventory", (req, res) => {
-  db.query("SELECT * FROM inventory ORDER BY created_at DESC", (err, results) => {
+  const query = "SELECT * FROM inventory";
+
+  db.query(query, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
   });
 });
 
+
 // Add Inventory Item
+
 app.post("/inventory", (req, res) => {
-    const { comp_code, description, quantity, barcode, category } = req.body;
-    if (!comp_code || !description || !quantity || !barcode || !category) {
-      return res.status(400).json({ error: "All fields are required" });
-    }
-    const query = `
-      INSERT INTO inventory (comp_code, description, quantity, barcode, category)
-      VALUES (?, ?, ?, ?, ?)
-    `;
-    db.query(query, [comp_code, description, quantity, barcode, category], (err) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: "Item added successfully" });
-    });
+  const {
+    comp_code,
+    description,
+    quantity,
+    barcode,
+    category,
+    unit_type,
+    weight,
+    price,
+    pack_size
+  } = req.body;
+
+  // Check required fields
+  if (
+    !comp_code ||
+    !description ||
+    !quantity ||
+    !barcode ||
+    !category ||
+    !unit_type ||
+    !weight ||
+    !price
+  ) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  // Default pack_size to 1 if unit_type is "Single Unit"
+  const finalPackSize = unit_type === "Single Unit" ? 1 : pack_size;
+
+  const query = `
+    INSERT INTO inventory (
+      comp_code, description, quantity, barcode, category,
+      unit_type, weight, price, pack_size
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  const values = [
+    comp_code,
+    description,
+    quantity,
+    barcode,
+    category,
+    unit_type,
+    weight,
+    price,
+    finalPackSize
+  ];
+
+  db.query(query, values, (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: "Item added successfully" });
   });
-  
+});
+
 
 // Delete Inventory Item
 app.delete("/inventory/:id", (req, res) => {
@@ -279,11 +377,11 @@ app.delete("/inventory/:id", (req, res) => {
 });
 
 app.post("/inventory/transaction", (req, res) => {
-    const { item_code, quantity, transaction_type } = req.body;
+    const { item_code, quantity, transaction_type, price } = req.body;
 
     // Input validation
-    if (!item_code || !quantity || !transaction_type) {
-        return res.status(400).json({ error: "Item code, quantity, and transaction type are required." });
+    if (!item_code || !quantity || !transaction_type || price === undefined) {
+        return res.status(400).json({ error: "Item code, quantity, transaction type, and price are required." });
     }
 
     db.getConnection((err, connection) => {
@@ -298,7 +396,6 @@ app.post("/inventory/transaction", (req, res) => {
             let updateQuery;
             let updateValues;
 
-            // Conditionally set query and values
             if (transaction_type === "issued") {
                 updateQuery = "UPDATE inventory SET quantity = quantity - ? WHERE comp_code = ? AND quantity >= ?";
                 updateValues = [quantity, item_code, quantity];
@@ -309,7 +406,6 @@ app.post("/inventory/transaction", (req, res) => {
 
             console.log("Executing inventory update:", { query: updateQuery, values: updateValues });
 
-            // Execute inventory update
             connection.query(updateQuery, updateValues, (err, updateResult) => {
                 if (err) {
                     console.error("Inventory Update Error:", err);
@@ -319,7 +415,6 @@ app.post("/inventory/transaction", (req, res) => {
                     });
                 }
 
-                // Check if update affected any row
                 if (updateResult.affectedRows === 0) {
                     return connection.rollback(() => {
                         connection.release();
@@ -327,11 +422,14 @@ app.post("/inventory/transaction", (req, res) => {
                     });
                 }
 
-                // Insert transaction log
-                const insertQuery = "INSERT INTO transaction (item_code, quantity, transaction_type) VALUES (?, ?, ?)";
-                console.log("Inserting transaction:", { query: insertQuery, values: [item_code, quantity, transaction_type] });
+                const insertQuery = `
+                    INSERT INTO transaction (item_code, quantity, transaction_type, price, transaction_date)
+                    VALUES (?, ?, ?, ?, NOW())
+                `;
 
-                connection.query(insertQuery, [item_code, quantity, transaction_type], (err) => {
+                console.log("Inserting transaction:", { query: insertQuery, values: [item_code, quantity, transaction_type, price] });
+
+                connection.query(insertQuery, [item_code, quantity, transaction_type, price], (err) => {
                     if (err) {
                         console.error("Transaction Log Error:", err);
                         return connection.rollback(() => {
@@ -340,7 +438,6 @@ app.post("/inventory/transaction", (req, res) => {
                         });
                     }
 
-                    // Commit transaction
                     connection.commit((err) => {
                         if (err) {
                             console.error("Transaction Commit Error:", err);
@@ -350,7 +447,6 @@ app.post("/inventory/transaction", (req, res) => {
                             });
                         }
 
-                        // Success
                         connection.release();
                         res.json({ message: "Transaction recorded successfully." });
                     });
@@ -361,6 +457,7 @@ app.post("/inventory/transaction", (req, res) => {
 });
 
 
+
 // Fetch All Past Transactions
 app.get("/inventory/transactions", (req, res) => {
     const fetchQuery = `
@@ -369,6 +466,7 @@ app.get("/inventory/transactions", (req, res) => {
             item_code, 
             quantity, 
             transaction_type, 
+            price,
             DATE_FORMAT(transaction_date, '%Y-%m-%d %H:%i:%s') as transaction_date 
         FROM transaction 
         ORDER BY id DESC
@@ -447,74 +545,65 @@ app.get("/api/products/barcode/:barcode", (req, res) => {
     });
   });
 
-  app.post("/inventory/transaction-scan", (req, res) => {
-    const { item_code, quantity, transaction_type } = req.body;
+  app.post("/inventory/transaction-scan", async (req, res) => {
+  const { items } = req.body;
 
-    // Input validation
-    if (!item_code || !quantity) {
-        return res.status(400).json({ error: "Item code and quantity are required." });
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: "Items array is required and cannot be empty." });
+  }
+
+  db.getConnection(async (err, rawConnection) => {
+    if (err) return res.status(500).json({ error: "Database connection error: " + err.message });
+
+    const connection = rawConnection.promise(); // ✅ use promise-based wrapper
+
+    try {
+      await connection.beginTransaction();
+      let totalAmount = 0;
+
+      for (const item of items) {
+        const { item_code, quantity, transaction_type, price } = item;
+
+        if (!item_code || !quantity || !transaction_type || !price) {
+          throw new Error("Each item must include item_code, quantity, transaction_type, and price.");
+        }
+
+        // Update inventory
+        const [updateResult] = await connection.query(
+          "UPDATE inventory SET quantity = quantity - ? WHERE comp_code = ? AND quantity >= ?",
+          [quantity, item_code, quantity]
+        );
+
+        if (updateResult.affectedRows === 0) {
+          throw new Error(`Not enough stock or invalid item code: ${item_code}`);
+        }
+
+        // Insert into transaction log
+        await connection.query(
+          "INSERT INTO transaction (item_code, quantity, transaction_type, price, transaction_date) VALUES (?, ?, ?, ?, NOW())",
+          [item_code, quantity, transaction_type, price]
+        );
+
+        totalAmount += quantity * price;
+      }
+
+      const billId = `BILL_${Date.now()}`;
+      await connection.commit(); // ✅ await commit
+      rawConnection.release();
+
+      return res.json({
+        message: "Purchase completed successfully.",
+        bill_id: billId,
+        total_amount: totalAmount,
+      });
+
+    } catch (error) {
+      await connection.rollback(); // ✅ await rollback
+      rawConnection.release();
+      console.error("Transaction processing error:", error);
+      return res.status(400).json({ error: error.message });
     }
-
-    db.getConnection((err, connection) => {
-        if (err) return res.status(500).json({ error: "Database connection error: " + err.message });
-
-        connection.beginTransaction((err) => {
-            if (err) {
-                connection.release();
-                return res.status(500).json({ error: "Transaction start error: " + err.message });
-            }
-
-            const updateQuery = "UPDATE inventory SET quantity = quantity - ? WHERE comp_code = ? AND quantity >= ?";
-            const updateValues = [quantity, item_code, quantity];
-
-            console.log("Executing inventory update:", { query: updateQuery, values: updateValues });
-
-            connection.query(updateQuery, updateValues, (err, updateResult) => {
-                if (err) {
-                    console.error("Inventory Update Error:", err);
-                    return connection.rollback(() => {
-                        connection.release();
-                        res.status(500).json({ error: "Inventory update error: " + err.message });
-                    });
-                }
-
-                if (updateResult.affectedRows === 0) {
-                    return connection.rollback(() => {
-                        connection.release();
-                        res.status(400).json({ error: "Invalid operation. Not enough stock or item code does not exist." });
-                    });
-                }
-
-                const insertQuery = "INSERT INTO transaction (item_code, quantity, transaction_type, transaction_date) VALUES (?, ?, 'issued', NOW())";
-                const insertValues = [item_code, quantity, transaction_type];
-
-                console.log("Inserting transaction:", { query: insertQuery, values: insertValues });
-
-                connection.query(insertQuery, insertValues, (err) => {
-                    if (err) {
-                        console.error("Transaction Log Error:", err);
-                        return connection.rollback(() => {
-                            connection.release();
-                            res.status(500).json({ error: "Transaction log error: " + err.message });
-                        });
-                    }
-
-                    connection.commit((err) => {
-                        if (err) {
-                            console.error("Transaction Commit Error:", err);
-                            return connection.rollback(() => {
-                                connection.release();
-                                res.status(500).json({ error: "Transaction commit error: " + err.message });
-                            });
-                        }
-
-                        connection.release();
-                        res.json({ message: "Purchase completed successfully." });
-                    });
-                });
-            });
-        });
-    });
+  });
 });
 
 
@@ -733,79 +822,154 @@ app.get("/api/user/products/barcode/:barcode", (req, res) => {
   });
 });
 
-app.post("user/inventory/transaction-scan", (req, res) => {
-  const { item_code, quantity, transaction_type } = req.body;
+app.post("/user/inventory/transaction-scan", (req, res) => {
+  const { items } = req.body;
 
-  // Input validation
-  if (!item_code || !quantity) {
-      return res.status(400).json({ error: "Item code and quantity are required." });
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: "Items array is required and cannot be empty." });
   }
 
-  db.getConnection((err, connection) => {
-      if (err) return res.status(500).json({ error: "Database connection error: " + err.message });
+  db.getConnection(async (err, rawConnection) => {
+    if (err) return res.status(500).json({ error: "Database connection error: " + err.message });
 
-      connection.beginTransaction((err) => {
-          if (err) {
-              connection.release();
-              return res.status(500).json({ error: "Transaction start error: " + err.message });
-          }
+    const connection = rawConnection.promise(); // ✅ use promise-based wrapper
 
-          const updateQuery = "UPDATE inventory SET quantity = quantity - ? WHERE comp_code = ? AND quantity >= ?";
-          const updateValues = [quantity, item_code, quantity];
+    try {
+      await connection.beginTransaction();
+      let totalAmount = 0;
 
-          console.log("Executing inventory update:", { query: updateQuery, values: updateValues });
+      for (const item of items) {
+        const { item_code, quantity, transaction_type, price } = item;
 
-          connection.query(updateQuery, updateValues, (err, updateResult) => {
-              if (err) {
-                  console.error("Inventory Update Error:", err);
-                  return connection.rollback(() => {
-                      connection.release();
-                      res.status(500).json({ error: "Inventory update error: " + err.message });
-                  });
-              }
+        if (!item_code || !quantity || !transaction_type || !price) {
+          throw new Error("Each item must include item_code, quantity, transaction_type, and price.");
+        }
 
-              if (updateResult.affectedRows === 0) {
-                  return connection.rollback(() => {
-                      connection.release();
-                      res.status(400).json({ error: "Invalid operation. Not enough stock or item code does not exist." });
-                  });
-              }
+        // Update inventory
+        const [updateResult] = await connection.query(
+          "UPDATE inventory SET quantity = quantity - ? WHERE comp_code = ? AND quantity >= ?",
+          [quantity, item_code, quantity]
+        );
 
-              const insertQuery = "INSERT INTO transaction (item_code, quantity, transaction_type, transaction_date) VALUES (?, ?, 'issued', NOW())";
-              const insertValues = [item_code, quantity, transaction_type];
+        if (updateResult.affectedRows === 0) {
+          throw new Error(`Not enough stock or invalid item code: ${item_code}`);
+        }
 
-              console.log("Inserting transaction:", { query: insertQuery, values: insertValues });
+        // Insert into transaction log
+        await connection.query(
+          "INSERT INTO transaction (item_code, quantity, transaction_type, price, transaction_date) VALUES (?, ?, ?, ?, NOW())",
+          [item_code, quantity, transaction_type, price]
+        );
 
-              connection.query(insertQuery, insertValues, (err) => {
-                  if (err) {
-                      console.error("Transaction Log Error:", err);
-                      return connection.rollback(() => {
-                          connection.release();
-                          res.status(500).json({ error: "Transaction log error: " + err.message });
-                      });
-                  }
+        totalAmount += quantity * price;
+      }
 
-                  connection.commit((err) => {
-                      if (err) {
-                          console.error("Transaction Commit Error:", err);
-                          return connection.rollback(() => {
-                              connection.release();
-                              res.status(500).json({ error: "Transaction commit error: " + err.message });
-                          });
-                      }
+      const billId = `BILL_${Date.now()}`;
+      await connection.commit(); // ✅ await commit
+      rawConnection.release();
 
-                      connection.release();
-                      res.json({ message: "Purchase completed successfully." });
-                  });
-              });
-          });
+      return res.json({
+        message: "Purchase completed successfully.",
+        bill_id: billId,
+        total_amount: totalAmount,
       });
+
+    } catch (error) {
+      await connection.rollback(); // ✅ await rollback
+      rawConnection.release();
+      console.error("Transaction processing error:", error);
+      return res.status(400).json({ error: error.message });
+    }
   });
 });
-  
 
   
+// Assuming you're using Express and a MySQL connection pool
+app.get("/inventory/all-products", (req, res) => {
+  const query = "SELECT comp_code, description FROM inventory";
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Error fetching products:", err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+    res.json(results);
+  });
+});
+
+
+  app.post("/inventory/sales-trend", (req, res) => {
+  const { items } = req.body;
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: "No products selected" });
+  }
+
+  const placeholders = items.map(() => "?").join(",");
   
+  // Calculate date 3 months ago (start of that month)
+  const now = new Date();
+  now.setDate(1); // start of current month
+  now.setMonth(now.getMonth() - 2); // go back 2 full months + current month = last 3 months
+  const startDate = now.toISOString().slice(0, 10);
+
+  const query = `
+    SELECT
+      item_code,
+      DATE_FORMAT(transaction_date, '%Y-%m') AS month,
+      SUM(CASE WHEN transaction_type = 'issued' THEN quantity ELSE 0 END) AS total_issued
+    FROM transaction
+    WHERE transaction_date >= ?
+      AND item_code IN (${placeholders})
+    GROUP BY item_code, month
+    ORDER BY month ASC
+  `;
+
+  db.query(query, [startDate, ...items], (err, results) => {
+    if (err) {
+      console.error("Sales Trend Query Error:", err);
+      return res.status(500).json({ error: "Database query error" });
+    }
+
+    // Transform the results into chart-friendly format
+    const chartData = {};
+    results.forEach(({ item_code, month, total_issued }) => {
+      if (!chartData[month]) chartData[month] = { month };
+      chartData[month][item_code] = total_issued;
+    });
+
+    // Fill missing months for all selected items with zero if needed (optional)
+
+    res.json(Object.values(chartData));
+  });
+});
+
+  app.post("/api/bills", (req, res) => {
+  const { bill_id, mobile, timestamp } = req.body;
+
+  if (!bill_id || !mobile || !timestamp) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+  const dateObj = new Date(timestamp);
+  if (isNaN(dateObj)) {
+    return res.status(400).json({ message: "Invalid timestamp format" });
+  }
+  const mysqlTimestamp = dateObj.toISOString().slice(0, 19).replace('T', ' ');
+
+  db.query(
+    "INSERT INTO bills (bill_id, mobile, timestamp) VALUES (?, ?, ?)",
+   [bill_id, mobile, mysqlTimestamp],
+    (error, results) => {
+      if (error) {
+        console.error("DB insert error:", error);
+        return res.status(500).json({ message: "Failed to save bill log" });
+      }
+      res.status(200).json({ message: "Bill log saved" });
+    }
+  );
+});
+
+
   
 
 // ✅ Logout Route

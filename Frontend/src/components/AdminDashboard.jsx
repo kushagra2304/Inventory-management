@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer, Label } from "recharts";
+import ProductSalesChart from "./ProductSalesChart";
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -64,17 +65,18 @@ const AdminDashboard = () => {
 
   const dashboardItems = [
     {
-      title: "Manage Inventory",
-      icon: <Box className="w-6 h-6 text-indigo-600" />,  // Updated icon
-      description: "Add, edit, and monitor stock levels.",
-      path: "/admin/inventory",
-    },
-    {
       title: "View All Products",
       icon: <PackageCheck className="w-6 h-6 text-indigo-600" />,
       description: "See a complete list of all inventory products.",
       path: "/admin/products",
     },
+    {
+      title: "Manage Inventory",
+      icon: <Box className="w-6 h-6 text-indigo-600" />,  // Updated icon
+      description: "Add, edit, and monitor stock levels.",
+      path: "/admin/inventory",
+    },
+   
     {
       title: "Transactions Log",
       icon: <FileBarChart2 className="w-6 h-6 text-indigo-600" />,
@@ -89,16 +91,16 @@ const AdminDashboard = () => {
     },
     {
       title: "Forecast & Predictions",
-      icon: <Sun className="w-6 h-6 text-indigo-600" />,  // Forecast-related icon
-      description: "Configure system preferences.",
+      icon: <Sun className="w-6 h-6 text-indigo-600" />,
+      description: "View inventory trends and predict future stock requirements.",
       path: "/admin/settings",
     },
     {
       title: "Scan Product",
       icon: <Camera className="w-6 h-6 text-indigo-600" />,
-      description: "Scan barcodes and fetch product details.",
+      description: "Scan barcodes, fetch product details, and purchase.",
       path: "/admin/scan",
-    },
+    }
   ];
 
   const handleNavigation = (path) => {
@@ -266,6 +268,12 @@ const COLORS = [
           ))}
         </div>
       </div>
+      <div className="mt-12 bg-white p-6 rounded-2xl shadow-md">
+  <h2 className="text-2xl font-semibold text-gray-800 mb-4">
+    Product Sales Trends (Last 3 Months)
+  </h2>
+  <ProductSalesChart />
+</div>
     </div>
   );
 };

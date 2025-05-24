@@ -8,23 +8,18 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { toast } from "react-hot-toast";
 const BASE_URL = import.meta.env.VITE_API_URL;
 
-
 export default function ManageTransactions() {
   const [transactions, setTransactions] = useState([]);
   const [fetching, setFetching] = useState(false);
   const [itemCode, setItemCode] = useState(""); // Item Code
   const [quantity, setQuantity] = useState(""); // Quantity
+  const [price, setPrice] = useState(""); // Price (new)
   const [transactionType, setTransactionType] = useState("issued"); // Default to 'issued'
 
-  // Fetch transactions on component mount
   useEffect(() => {
     fetchTransactions();
   }, []);
 
-  
-
-
-  // Function to fetch transaction logs
   const fetchTransactions = async () => {
     setFetching(true);
     try {
@@ -34,14 +29,15 @@ export default function ManageTransactions() {
         throw new Error("Invalid data format");
       }
 
-      // Map transaction data
       setTransactions(
         response.data.map((txn) => ({
           id: txn.id,
           itemCode: txn.item_code || "Unknown",
           quantity: txn.quantity || "0",
+          price: txn.price !== undefined ? parseFloat(txn.price).toFixed(2) : "0.00", // format price
           type: txn.transaction_type || "N/A",
-          date: new Date(txn.transaction_date).toLocaleString(), // Convert date to readable format
+          date: new Date(txn.transaction_date).toLocaleDateString(),
+
         }))
       );
     } catch (error) {
@@ -53,27 +49,28 @@ export default function ManageTransactions() {
     }
   };
 
-  // Function to add new transaction
   const addTransaction = async () => {
-    if (!itemCode.trim() || !quantity.trim() || !transactionType) {
+    if (!itemCode.trim() || !quantity.trim() || !transactionType || !price.trim()) {
       toast.error("Please fill all fields");
       return;
     }
-  
+
     try {
-      const newTransaction = { 
-        item_code: itemCode.trim(), 
-        quantity: parseInt(quantity, 10), // Ensure it's a number
-        transaction_type: transactionType 
+      const newTransaction = {
+        item_code: itemCode.trim(),
+        quantity: parseInt(quantity, 10),
+        transaction_type: transactionType,
+        price: parseFloat(price),
       };
-      
+
       await axios.post(`${BASE_URL}/inventory/transaction`, newTransaction, { withCredentials: true });
-      
+
       toast.success("Transaction added successfully");
-      setItemCode(""); // Reset fields
+      setItemCode("");
       setQuantity("");
+      setPrice(""); // reset price
       setTransactionType("issued");
-      fetchTransactions(); // Refresh list
+      fetchTransactions();
     } catch (error) {
       console.error("Error adding transaction:", error);
       toast.error("Failed to add transaction");
@@ -88,18 +85,27 @@ export default function ManageTransactions() {
       <CardContent>
         {/* Add Transaction Section */}
         <div className="flex gap-4 mb-4 flex-wrap">
-          <Input 
-            placeholder="Item Code" 
-            value={itemCode} 
-            onChange={(e) => setItemCode(e.target.value)} 
+          <Input
+            placeholder="Item Code"
+            value={itemCode}
+            onChange={(e) => setItemCode(e.target.value)}
           />
-          <Input 
-            placeholder="Quantity" 
-            value={quantity} 
-            onChange={(e) => setQuantity(e.target.value)} 
-            type="number" 
+          <Input
+            placeholder="Quantity"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            type="number"
             min="1"
           />
+          <Input
+            placeholder="Price"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            type="number"
+            min="0"
+            step="0.01"
+          />
+
           <Select value={transactionType} onValueChange={(value) => setTransactionType(value)}>
             <SelectTrigger>
               <SelectValue placeholder="Select Type" />
@@ -116,34 +122,39 @@ export default function ManageTransactions() {
         {fetching && <p className="text-center text-gray-500">Loading transactions...</p>}
 
         {/* Transactions Table */}
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Item Code</TableHead>
-              <TableHead>Quantity</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Date</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {transactions.length > 0 ? (
-              transactions.map((txn) => (
-                <TableRow key={txn.id}>
-                  <TableCell>{txn.itemCode}</TableCell>
-                  <TableCell>{txn.quantity}</TableCell>
-                  <TableCell className={txn.type === "issued" ? "text-red-500" : "text-green-500"}>{txn.type}</TableCell>
-                  <TableCell>{txn.date}</TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan="4" className="text-center text-gray-500">
-                  No transactions found
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+       <Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Item Code</TableHead>
+      <TableHead>Quantity</TableHead>
+      <TableHead>Price</TableHead>
+      <TableHead>Type</TableHead>
+      <TableHead>Date</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    {transactions.length > 0 ? (
+      transactions.map((txn) => (
+        <TableRow key={txn.id}>
+          <TableCell>{txn.itemCode}</TableCell>
+          <TableCell>{txn.quantity}</TableCell>
+          <TableCell>Rs.{txn.price}</TableCell>
+          <TableCell className={txn.type === "issued" ? "text-red-500" : "text-green-500"}>
+            {txn.type}
+          </TableCell>
+          <TableCell>{txn.date}</TableCell>
+        </TableRow>
+      ))
+    ) : (
+      <TableRow>
+        <TableCell colSpan="5" className="text-center text-gray-500">
+          No transactions found
+        </TableCell>
+      </TableRow>
+    )}
+  </TableBody>
+</Table>
+
       </CardContent>
     </Card>
   );

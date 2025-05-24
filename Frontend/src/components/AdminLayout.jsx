@@ -7,19 +7,21 @@ import {
   Sun,
   Camera,
   LogOut,
+  Box,
 } from "lucide-react";
 
 const navLinks = [
   {
-    title: "Inventory Management",
-    icon: <PackageCheck size={18} />,
-    path: "/admin/inventory",
-  },
-  {
     title: "View All Products",
     icon: <PackageCheck size={18} />,
     path: "/admin/products",
+  },    
+  {
+    title: "Manage Inventory",
+    icon: <Box size={18} />,
+    path: "/admin/inventory",
   },
+ 
   {
     title: "Transactions Log",
     icon: <FileBarChart2 size={18} />,
@@ -30,11 +32,11 @@ const navLinks = [
     icon: <UserCog size={18} />,
     path: "/admin/users",
   },
-  {
-    title: "Reports & Analysis",
-    icon: <FileBarChart2 size={18} />,
-    path: "/admin/reports",
-  },
+  // {
+  //   title: "Reports & Analysis",
+  //   icon: <FileBarChart2 size={18} />,
+  //   path: "/admin/reports",
+  // },
   {
     title: "Forecast & Predictions",
     icon: <Sun size={18} />,
