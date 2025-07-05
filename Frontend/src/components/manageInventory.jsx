@@ -2,15 +2,55 @@ import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
 const categoryOptions = [
-  "Life Style", "Handicrafts", "Textiles", "Food Products", "Traditional Art", "Organic Products",
-  "Home Decor", "Sustainable Products", "Eco-friendly Goods", "Jewelry & Accessories",
-  "Bamboo & Cane Products", "Pottery & Ceramics", "Spices & Condiments",
-  "Herbal Products", "Leather Goods", "Handloom", "Natural Skincare"
+  {
+    label: "Lifestyle & Personal Care",
+    options: [
+      "Life Style",
+      "Jewelry & Accessories",
+      "Natural Skincare",
+      "Herbal Products",
+    ],
+  },
+  {
+    label: "Home & Living",
+    options: [
+      "Home Decor",
+      "Pottery & Ceramics",
+      "Bamboo & Cane Products",
+      "Eco-friendly Goods",
+      "Sustainable Products",
+    ],
+  },
+  {
+    label: "Food & Organic",
+    options: [
+      "Food Products",
+      "Spices & Condiments",
+      "Organic Products",
+    ],
+  },
+  {
+    label: "Art & Craft",
+    options: [
+      "Traditional Art",
+      "Handicrafts",
+      "Textiles",
+      "Handloom",
+      "Leather Goods",
+    ],
+  },
 ];
 
 export default function ManageInventory() {
@@ -20,10 +60,10 @@ export default function ManageInventory() {
   const [quantity, setQuantity] = useState("");
   const [barcode, setBarcode] = useState("");
   const [category, setCategory] = useState("");
-  const [unitType, setUnitType] = useState(""); // Single Unit or Pack
-  const [packSize, setPackSize] = useState(""); // For Pack type
-  const [weight, setWeight] = useState("");     // Weight per unit
-  const [price, setPrice] = useState("");       // Price
+  const [unitType, setUnitType] = useState("");
+  const [packSize, setPackSize] = useState("");
+  const [weight, setWeight] = useState("");
+  const [price, setPrice] = useState("");
 
   useEffect(() => {
     fetchInventory();
@@ -82,7 +122,6 @@ export default function ManageInventory() {
         <CardTitle>Manage Inventory</CardTitle>
       </CardHeader>
       <CardContent>
-        {/* Add Item Section */}
         <div className="grid grid-cols-2 md:grid-cols-10 gap-2 mb-4 items-center">
           <Input placeholder="Component Code" className="text-sm h-9" value={compCode} onChange={(e) => setCompCode(e.target.value)} />
           <Input placeholder="Description" className="text-sm h-9" value={description} onChange={(e) => setDescription(e.target.value)} />
@@ -91,8 +130,12 @@ export default function ManageInventory() {
 
           <select value={category} onChange={(e) => setCategory(e.target.value)} className="text-sm h-9 px-2 border border-gray-300 rounded-md">
             <option value="">Category</option>
-            {categoryOptions.map((option, idx) => (
-              <option key={idx} value={option}>{option}</option>
+            {categoryOptions.map((group, groupIdx) => (
+              <optgroup key={groupIdx} label={group.label}>
+                {group.options.map((option, idx) => (
+                  <option key={idx} value={option}>{option}</option>
+                ))}
+              </optgroup>
             ))}
           </select>
 
@@ -102,18 +145,15 @@ export default function ManageInventory() {
             <option value="Pack">Pack</option>
           </select>
 
-          {/* Conditionally show pack size input */}
           {unitType === "Pack" && (
             <Input placeholder="Pack of how many?" type="number" className="text-sm h-9" value={packSize} onChange={(e) => setPackSize(e.target.value)} />
           )}
 
           <Input placeholder="Weight (g/kg)" className="text-sm h-9" value={weight} onChange={(e) => setWeight(e.target.value)} />
           <Input placeholder="Price (₹)" type="number" className="text-sm h-9" value={price} onChange={(e) => setPrice(e.target.value)} />
-
           <Button onClick={handleAddItem} className="text-sm h-9">Add</Button>
         </div>
 
-        {/* Inventory Table */}
         <Table>
           <TableHeader>
             <TableRow>
@@ -138,13 +178,10 @@ export default function ManageInventory() {
                   <TableCell>{item.quantity}</TableCell>
                   <TableCell>{item.barcode}</TableCell>
                   <TableCell>{item.category}</TableCell>
-                  <TableCell>
-  {item.unit_type === "Pack" ? `Pack (${item.pack_size})` : item.unit_type}
-</TableCell>
+                  <TableCell>{item.unit_type === "Pack" ? `Pack (${item.pack_size})` : item.unit_type}</TableCell>
                   <TableCell>{item.weight}</TableCell>
                   <TableCell>{item.price}</TableCell>
                   <TableCell>{new Date(item.created_at).toLocaleDateString()}</TableCell>
-
                   <TableCell>
                     <Button variant="destructive" onClick={() => handleDeleteItem(item.id)}>Delete</Button>
                   </TableCell>

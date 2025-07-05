@@ -22,33 +22,37 @@ export default function LoginPage() {
   };
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setError(""); // Reset error message
+  e.preventDefault();
+  setError("");
 
-    try {
-      const response = await axios.post(
-        `${BASE_URL}/login`,
-        { email, password, role },
-        { withCredentials: true }
-      );
+  try {
+    const res = await axios.post(
+      `${BASE_URL}/login`,
+      { email, password, role },
+      { withCredentials: true }
+    );
 
-      localStorage.setItem("jwtToken", response.data.token);
-      localStorage.setItem("role", response.data.user.role);
+    localStorage.setItem("jwtToken", res.data.token);
+    localStorage.setItem("role", res.data.user.role);
 
-      navigate(response.data.user.role === "admin" ? "/admin" : "/user");
-    } catch (err) {
-      setError(err.response?.data?.message || "Invalid email or password!");
-    }
-  };
-
+    const userRole = res.data.user.role;
+    if (userRole === "admin") navigate("/admin");
+    else if (userRole === "user") navigate("/user");
+    else if (userRole === "stock_operator") navigate("/stock");
+    else navigate("/dashboard"); // fallback
+  } catch (err) {
+    console.error("Login Error:", err);
+    setError(err.response?.data?.message || "Invalid email or password!");
+  }
+};
   return (
     <div className="min-h-screen flex items-center justify-center bg-blue-100 px-4">
       <Card className="w-full max-w-md bg-white p-6 rounded-2xl shadow-lg">
         <CardHeader>
           <CardTitle className="text-center text-2xl font-bold text-[#010D2A]">
-          <span className="inline-block text-4xl font-bold text-[#010D2A] border-b-4 border-red-600 pb-1">
-  SA <span className="text-red-600 text-5xl">R</span> AS
-</span>
+            <span className="inline-block text-4xl font-bold text-[#010D2A] border-b-4 border-red-600 pb-1">
+              SA <span className="text-red-600 text-5xl">R</span> AS
+            </span>
 
           </CardTitle>
         </CardHeader>
@@ -58,29 +62,39 @@ export default function LoginPage() {
             type="single"
             value={role}
             onValueChange={handleRoleChange}
-            className="mb-6 flex justify-center"
+            className="mb-6 flex justify-center space-x-2"
           >
             <ToggleGroupItem
               value="admin"
-              className={`px-4 py-2 rounded-full text-sm ${
-                role === "admin"
-        ? "bg-[#010D2A] text-white shadow-md border border-[#010D2A]"
-        : "bg-gray-200 text-gray-700"
-              }`}
+              className={`px-4 py-2 rounded-full text-sm ${role === "admin"
+                  ? "bg-[#010D2A] text-white shadow-md border border-[#010D2A]"
+                  : "bg-gray-200 text-gray-700"
+                }`}
             >
               Admin
             </ToggleGroupItem>
+
+            <ToggleGroupItem
+              value="stock_operator"
+              className={`px-4 py-2 rounded-full text-sm ${role === "stock_operator"
+                  ? "bg-[#010D2A] text-white shadow-md border border-[#010D2A]"
+                  : "bg-gray-200 text-gray-700"
+                }`}
+            >
+              Stock Operator
+            </ToggleGroupItem>
+
             <ToggleGroupItem
               value="user"
-              className={`px-4 py-2 rounded-full text-sm ${
-                role === "user"
-        ? "bg-[#010D2A] text-white shadow-md border border-[#010D2A]"
-        : "bg-gray-200 text-gray-700"
-              }`}
+              className={`px-4 py-2 rounded-full text-sm ${role === "user"
+                  ? "bg-[#010D2A] text-white shadow-md border border-[#010D2A]"
+                  : "bg-gray-200 text-gray-700"
+                }`}
             >
               User
             </ToggleGroupItem>
           </ToggleGroup>
+
 
           <form onSubmit={handleLogin} className="space-y-4">
             <Input

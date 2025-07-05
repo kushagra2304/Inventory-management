@@ -69,9 +69,13 @@ const ViewInventory = () => {
                 >
                   <CardContent className="p-4">
                     <img
-                      src={item.image || "https://via.placeholder.com/150"}
+                      src={
+  item.image
+    ? `${BASE_URL}/uploads/${item.image}`
+    : "https://via.placeholder.com/150"
+}
                       alt="Item"
-                      className="w-full h-48 object-cover rounded-xl border"
+                      className="w-full h-80 object-cover rounded-xl border"
                     />
                     <h3 className="text-lg font-semibold text-gray-800 mt-4">
                       {item.description}
@@ -93,9 +97,13 @@ const ViewInventory = () => {
                 </DialogHeader>
                 <div className="space-y-4">
                   <img
-                    src={item.image || "https://via.placeholder.com/150"}
+                    src={
+  item.image
+    ? `${BASE_URL}/uploads/${item.image}`
+    : "https://via.placeholder.com/150"
+}
                     alt="Item"
-                    className="w-full h-48 object-cover rounded-xl border"
+                    className="w-full h-80 object-cover rounded-xl border"
                   />
                   <div className="space-y-1 text-sm text-gray-700">
                     <p>
@@ -109,8 +117,13 @@ const ViewInventory = () => {
                       <strong>Category:</strong> {item.category || "N/A"}
                     </p>
                     <p>
-                      <strong>Unit:</strong> {item.unit_type || "N/A"}
-                    </p>
+  <strong>Unit:</strong>{" "}
+  {item.unit_type === "Pack" && item.pack_size
+    ? `Pack (${item.pack_size})`
+    : item.unit_type || "N/A"}
+</p>
+
+
                     <p>
                       <strong>Weight:</strong> {item.weight || "N/A"}
                     </p>

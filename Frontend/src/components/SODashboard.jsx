@@ -4,11 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   AlertTriangle,
   PackageCheck,
-  UserCog,
   FileBarChart2,
-  Sun,
   Camera,
-  Box,
 } from "lucide-react";
 import axios from "axios";
 import {
@@ -20,7 +17,6 @@ import {
   ResponsiveContainer,
   Label,
 } from "recharts";
-import ProductSalesChart from "./ProductSalesChart";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +26,7 @@ import {
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
-const AdminDashboard = () => {
+const StockOperatorDashboard = () => {
   const navigate = useNavigate();
   const [greeting, setGreeting] = useState("Hello");
   const [items, setItems] = useState([]);
@@ -47,12 +43,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     axios
-      .get(`${BASE_URL}/api/inventory/low-stock`, {
-        withCredentials: true,
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("jwtToken")}`,
-        },
-      })
+      .get(`${BASE_URL}/api/inventory/low-stock`, { withCredentials: true })
       .then((response) => {
         setItems(response.data.lowStock);
       })
@@ -63,12 +54,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     axios
-      .get(`${BASE_URL}/api/inventory-pie`, {
-        withCredentials: true,
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("jwtToken")}`,
-        },
-      })
+      .get(`${BASE_URL}/api/inventory-pie`, { withCredentials: true })
       .then((response) => {
         setAllProducts(response.data.products || []);
       })
@@ -78,6 +64,27 @@ const AdminDashboard = () => {
   }, []);
 
   const lowStockItems = items.filter((item) => item.quantity < 10);
+
+  const dashboardItems = [
+    {
+      title: "Manage Inventory",
+      icon: <PackageCheck className="w-6 h-6 text-indigo-600" />,
+      description: "Add and update inventory stock.",
+      path: "/stock/inventory",
+    },
+    {
+      title: "Transaction Logs",
+      icon: <FileBarChart2 className="w-6 h-6 text-indigo-600" />,
+      description: "View and record inventory transactions.",
+      path: "/stock/transactions",
+    },
+    {
+      title: "Scan Product",
+      icon: <Camera className="w-6 h-6 text-indigo-600" />,
+      description: "Scan and manage items by barcode.",
+      path: "/stock/scan",
+    },
+  ];
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -98,63 +105,19 @@ const AdminDashboard = () => {
   const totalQuantity = pieData.reduce((sum, item) => sum + item.value, 0);
 
   const COLORS = [
-    "#bfdbfe",
-    "#93c5fd",
-    "#60a5fa",
-    "#3b82f6",
-    "#2563eb",
-    "#1d4ed8",
-    "#1e40af",
-    "#1e3a8a",
-    "#172554",
-  ];
-
-  const dashboardItems = [
-    {
-      title: "View All Products",
-      icon: <PackageCheck className="w-6 h-6 text-indigo-600" />,
-      description: "See a complete list of all inventory products.",
-      path: "/admin/products",
-    },
-    {
-      title: "Manage Inventory",
-      icon: <Box className="w-6 h-6 text-indigo-600" />,
-      description: "Add, edit, and monitor stock levels.",
-      path: "/admin/inventory",
-    },
-    {
-      title: "Transactions Log",
-      icon: <FileBarChart2 className="w-6 h-6 text-indigo-600" />,
-      description: "Track issued/received transaction history.",
-      path: "/admin/transactions",
-    },
-    {
-      title: "User Management",
-      icon: <UserCog className="w-6 h-6 text-indigo-600" />,
-      description: "Assign roles and manage users.",
-      path: "/admin/users",
-    },
-    {
-      title: "Forecast & Predictions",
-      icon: <Sun className="w-6 h-6 text-indigo-600" />,
-      description: "View inventory trends and predict future stock requirements.",
-      path: "/admin/settings",
-    },
-    {
-      title: "Scan Product",
-      icon: <Camera className="w-6 h-6 text-indigo-600" />,
-      description: "Scan barcodes, fetch product details, and purchase.",
-      path: "/admin/scan",
-    },
+    "#93c5fd", "#60a5fa", "#3b82f6", "#2563eb", "#1d4ed8", "#1e40af",
+    "#1e3a8a", "#172554"
   ];
 
   return (
     <div className="p-6 space-y-10 bg-gray-50 min-h-screen">
       <div className="space-y-1 text-center">
         <h1 className="text-4xl font-bold text-blue-900 relative inline-block after:block after:h-1 after:bg-red-600 after:w-full after:mt-1">
-          {greeting}, Admin 👋
+          {greeting}, Stock Operator 👋
         </h1>
-        <p className="text-gray-500">Here’s a quick summary of your inventory.</p>
+        <p className="text-gray-500">
+          Here’s a quick overview of current inventory status.
+        </p>
       </div>
 
       <div className="flex flex-col md:flex-row justify-between gap-6">
@@ -185,7 +148,10 @@ const AdminDashboard = () => {
                       <span className="text-xs text-gray-600">{item.quantity} left</span>
                     </div>
                     <div className="w-full h-2 bg-red-100 rounded-full">
-                      <div className={`h-2 ${barColor} rounded-full transition-all duration-300`} style={{ width: `${percent}%` }} />
+                      <div
+                        className={`h-2 ${barColor} rounded-full transition-all duration-300`}
+                        style={{ width: `${percent}%` }}
+                      />
                     </div>
                   </div>
                 );
@@ -245,7 +211,7 @@ const AdminDashboard = () => {
             <p className="text-gray-500">No product data available.</p>
           )}
         </div>
-      </div>
+      </div> 
 
       <div>
         <h2 className="text-2xl font-semibold text-gray-800 mb-4">Dashboard Tools</h2>
@@ -272,13 +238,6 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      <div className="mt-12 bg-white p-6 rounded-2xl shadow-md">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4">
-          Product Sales Trends (Last 3 Months)
-        </h2>
-        <ProductSalesChart />
-      </div>
-
       {selectedProduct && (
         <Dialog open={showModal} onOpenChange={setShowModal}>
           <DialogContent>
@@ -290,12 +249,11 @@ const AdminDashboard = () => {
               <p><strong>Description:</strong> {selectedProduct.description || 'N/A'}</p>
               <p><strong>Category:</strong> {selectedProduct.category || 'N/A'}</p>
               <p>
-  <strong>Unit:</strong>{" "}
-  {selectedProduct.unit_type === "Pack"
-    ? `Pack (${selectedProduct.pack_size})`
-    : selectedProduct.unit_type || "N/A"}
-</p>
-
+                <strong>Unit:</strong>{" "}
+                {selectedProduct.unit_type === "Pack"
+                  ? `Pack (${selectedProduct.pack_size})`
+                  : selectedProduct.unit_type || "N/A"}
+              </p>
               <p><strong>Weight:</strong> {selectedProduct.weight || 'N/A'}</p>
               <p><strong>Price:</strong> ₹{selectedProduct.price || 'N/A'}</p>
             </div>
@@ -306,4 +264,4 @@ const AdminDashboard = () => {
   );
 };
 
-export default AdminDashboard;
+export default StockOperatorDashboard;

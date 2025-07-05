@@ -19,9 +19,10 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { toast } from "react-hot-toast";
+
 const BASE_URL = import.meta.env.VITE_API_URL;
 
-export default function ManageTransactions() {
+export default function StockOperatorTransactions() {
   const [transactions, setTransactions] = useState([]);
   const [fetching, setFetching] = useState(false);
   const [itemCode, setItemCode] = useState("");
@@ -41,7 +42,9 @@ export default function ManageTransactions() {
   const fetchTransactions = async () => {
     setFetching(true);
     try {
-      const response = await axios.get(`${BASE_URL}/inventory/transactions`, { withCredentials: true });
+      const response = await axios.get(`${BASE_URL}/inventory/transactions-so`, {
+        withCredentials: true,
+      });
 
       if (!response.data || !Array.isArray(response.data)) {
         throw new Error("Invalid data format");
@@ -54,9 +57,8 @@ export default function ManageTransactions() {
           quantity: txn.quantity || "0",
           price: txn.price !== undefined ? parseFloat(txn.price).toFixed(2) : "0.00",
           type: txn.transaction_type || "N/A",
-          date: new Date(txn.transaction_date).toLocaleDateString(),
-          remaining: txn.remaining_quantity ?? "N/A",
-          updatedBy: txn.updated_by || "System",
+          date: txn.transaction_date ? txn.transaction_date.split(" ")[0] : "-",
+          remaining: txn.remaining_quantity !== undefined ? txn.remaining_quantity : "N/A",
         }))
       );
     } catch (error) {
@@ -74,16 +76,20 @@ export default function ManageTransactions() {
       return;
     }
 
+    const updatedBy = localStorage.getItem("username") || "Stock Operator";
+
     try {
       const newTransaction = {
         item_code: itemCode.trim(),
         quantity: parseInt(quantity, 10),
         transaction_type: transactionType,
         price: parseFloat(price),
-        
+        updated_by: updatedBy,
       };
 
-      await axios.post(`${BASE_URL}/inventory/transaction`, newTransaction, { withCredentials: true });
+      await axios.post(`${BASE_URL}/inventory/transaction-so`, newTransaction, {
+        withCredentials: true,
+      });
 
       toast.success("Transaction added successfully");
       setItemCode("");
@@ -99,27 +105,62 @@ export default function ManageTransactions() {
 
   const filteredTransactions = transactions
     .filter((txn) => (itemFilter === "None" ? true : txn.itemCode === itemFilter))
+    .filter((txn) => {
+      if (quantityFilter === "High") return true;
+      if (quantityFilter === "Low") return true;
+      return true;
+    })
+    .filter((txn) => {
+      if (priceFilter === "High") return true;
+      if (priceFilter === "Low") return true;
+      return true;
+    })
     .filter((txn) => (typeFilter === "None" ? true : txn.type === typeFilter));
 
-  let sortedTransactions = [...filteredTransactions];
-  if (quantityFilter === "High") sortedTransactions.sort((a, b) => b.quantity - a.quantity);
-  if (quantityFilter === "Low") sortedTransactions.sort((a, b) => a.quantity - b.quantity);
-  if (priceFilter === "High") sortedTransactions.sort((a, b) => b.price - a.price);
-  if (priceFilter === "Low") sortedTransactions.sort((a, b) => a.price - b.price);
+  const sortedTransactions = [...filteredTransactions];
+
+  if (quantityFilter === "High") {
+    sortedTransactions.sort((a, b) => b.quantity - a.quantity);
+  } else if (quantityFilter === "Low") {
+    sortedTransactions.sort((a, b) => a.quantity - b.quantity);
+  }
+
+  if (priceFilter === "High") {
+    sortedTransactions.sort((a, b) => b.price - a.price);
+  } else if (priceFilter === "Low") {
+    sortedTransactions.sort((a, b) => a.price - b.price);
+  }
 
   const uniqueItemCodes = [...new Set(transactions.map((t) => t.itemCode))];
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Inventory Transaction Logs</CardTitle>
+        <CardTitle>Stock Operator Transaction Logs</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex gap-4 mb-4 flex-wrap">
-          <Input placeholder="Item Code" value={itemCode} onChange={(e) => setItemCode(e.target.value)} />
-          <Input placeholder="Quantity" value={quantity} onChange={(e) => setQuantity(e.target.value)} type="number" min="1" />
-          <Input placeholder="Price" value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" step="0.01" />
-          <Select value={transactionType} onValueChange={(value) => setTransactionType(value)}>
+          <Input
+            placeholder="Item Code"
+            value={itemCode}
+            onChange={(e) => setItemCode(e.target.value)}
+          />
+          <Input
+            placeholder="Quantity"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            type="number"
+            min="1"
+          />
+          <Input
+            placeholder="Price"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            type="number"
+            min="0"
+            step="0.01"
+          />
+          <Select value={transactionType} onValueChange={setTransactionType}>
             <SelectTrigger>
               <SelectValue placeholder="Select Type" />
             </SelectTrigger>
@@ -138,17 +179,18 @@ export default function ManageTransactions() {
             <TableRow>
               <TableHead>Date</TableHead>
               <TableHead>
-
                 <div className="flex items-center gap-2">
-                  Item Code
+                  ITEM CODE
                   <Select onValueChange={setItemFilter}>
                     <SelectTrigger className="w-28">
                       <SelectValue placeholder="Filter" />
                     </SelectTrigger>
-                    <SelectContent side="bottom" align="start" avoidCollisions={false}>
+                    <SelectContent>
                       <SelectItem value="None">None</SelectItem>
                       {uniqueItemCodes.map((code) => (
-                        <SelectItem key={code} value={code}>{code}</SelectItem>
+                        <SelectItem key={code} value={code}>
+                          {code}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -162,7 +204,7 @@ export default function ManageTransactions() {
                     <SelectTrigger className="w-28">
                       <SelectValue placeholder="Sort" />
                     </SelectTrigger>
-                    <SelectContent side="bottom" align="start" avoidCollisions={false}>
+                    <SelectContent>
                       <SelectItem value="None">None</SelectItem>
                       <SelectItem value="High">High to Low</SelectItem>
                       <SelectItem value="Low">Low to High</SelectItem>
@@ -172,12 +214,12 @@ export default function ManageTransactions() {
               </TableHead>
               <TableHead>
                 <div className="flex items-center gap-2">
-                  Price
+                  PRICE
                   <Select onValueChange={setPriceFilter}>
                     <SelectTrigger className="w-28">
                       <SelectValue placeholder="Sort" />
                     </SelectTrigger>
-                    <SelectContent side="bottom" align="start" avoidCollisions={false}>
+                    <SelectContent>
                       <SelectItem value="None">None</SelectItem>
                       <SelectItem value="High">High to Low</SelectItem>
                       <SelectItem value="Low">Low to High</SelectItem>
@@ -187,12 +229,12 @@ export default function ManageTransactions() {
               </TableHead>
               <TableHead>
                 <div className="flex items-center gap-2">
-                  Type
+                  TYPE
                   <Select onValueChange={setTypeFilter}>
                     <SelectTrigger className="w-28">
                       <SelectValue placeholder="Type" />
                     </SelectTrigger>
-                    <SelectContent side="bottom" align="start" avoidCollisions={false}>
+                    <SelectContent>
                       <SelectItem value="None">None</SelectItem>
                       <SelectItem value="issued">Issued</SelectItem>
                       <SelectItem value="received">Received</SelectItem>
@@ -200,8 +242,6 @@ export default function ManageTransactions() {
                   </Select>
                 </div>
               </TableHead>
-             
-              
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -212,10 +252,10 @@ export default function ManageTransactions() {
                   <TableCell>{txn.itemCode}</TableCell>
                   <TableCell>{txn.remaining}</TableCell>
                   <TableCell>{txn.quantity}</TableCell>
-                  <TableCell>Rs.{txn.price}</TableCell>
-                  <TableCell className={txn.type === "issued" ? "text-red-500" : "text-green-500"}>{txn.type}</TableCell>
-                  
-                  
+                  <TableCell>₹{txn.price}</TableCell>
+                  <TableCell className={txn.type === "issued" ? "text-red-500" : "text-green-500"}>
+                    {txn.type}
+                  </TableCell>
                 </TableRow>
               ))
             ) : (

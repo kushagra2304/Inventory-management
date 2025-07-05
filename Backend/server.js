@@ -178,9 +178,13 @@ app.delete("/admin/users/:id", authenticateToken, (req, res) => {
 app.post("/api/auth/add-user", async (req, res) => {
   try {
       const { name, email, password, role } = req.body;
+      const allowedRoles = ["admin", "stock_operator", "user"];
       if (!name || !email || !password || !role) {
           return res.status(400).json({ message: "All fields are required" });
       }
+      if (!allowedRoles.includes(role)) {
+      return res.status(400).json({ message: "Invalid role" });
+    }
 
       const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -456,23 +460,51 @@ app.post("/inventory/transaction", (req, res) => {
     });
 });
 
+const multer = require("multer");
+const path = require("path");
+
+// Configure file storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, "./uploads/"),
+  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
+});
+
+const upload = multer({ storage });
+
+app.post("/api/inventory/upload-image", upload.single("image"), (req, res) => {
+  const compCode = req.body.comp_code;
+  const imagePath = req.file.filename;
+
+  const updateQuery = "UPDATE inventory SET image = ? WHERE comp_code = ?";
+  db.query(updateQuery, [imagePath, compCode], (err) => {
+    if (err) {
+      console.error("DB Update Error:", err);
+      return res.status(500).json({ success: false, error: "Image update failed" });
+    }
+    res.json({ success: true, imagePath });
+  });
+});
+
 
 
 // Fetch All Past Transactions
 app.get("/inventory/transactions", (req, res) => {
     const fetchQuery = `
         SELECT 
-            id, 
-            item_code, 
-            quantity, 
-            transaction_type, 
-            price,
-            DATE_FORMAT(transaction_date, '%Y-%m-%d %H:%i:%s') as transaction_date 
-        FROM transaction 
-        ORDER BY id DESC
+            t.id, 
+            t.item_code, 
+            t.quantity, 
+            t.transaction_type, 
+            t.price,
+            t.updated_by,
+            DATE_FORMAT(t.transaction_date, '%Y-%m-%d %H:%i:%s') as transaction_date,
+            i.quantity AS remaining_quantity
+        FROM transaction t
+        LEFT JOIN inventory i ON t.item_code = i.comp_code
+        ORDER BY t.id DESC
     `;
 
-    console.log("Fetching all transactions");
+    console.log("Fetching all transactions with remaining quantity");
 
     db.query(fetchQuery, (err, results) => {
         if (err) {
@@ -482,6 +514,7 @@ app.get("/inventory/transactions", (req, res) => {
         res.json(results);
     });
 });
+
 
 
 app.get('/inventory/reports', async (req, res) => {
@@ -505,23 +538,23 @@ app.get('/inventory/reports', async (req, res) => {
 
 // ✅ Fetch Low Stock Items (quantity < 10)
 app.get("/api/inventory/low-stock", authenticateToken, (req, res) => {
-    const LOW_STOCK_THRESHOLD = 10;
+  const LOW_STOCK_THRESHOLD = 10;
 
-    const query = `
-        SELECT id, comp_code, description, quantity 
-        FROM inventory 
-        WHERE quantity < ?
-        ORDER BY quantity ASC
-    `;
+  const query = `
+    SELECT id, comp_code, description, category, unit_type, weight, price, quantity,pack_size
+    FROM inventory
+    WHERE quantity < ?
+    ORDER BY quantity ASC
+  `;
 
-    db.query(query, [LOW_STOCK_THRESHOLD], (err, results) => {
-        if (err) {
-            console.error("Low Stock Query Error:", err);
-            return res.status(500).json({ message: "Failed to fetch low stock items" });
-        }
+  db.query(query, [LOW_STOCK_THRESHOLD], (err, results) => {
+    if (err) {
+      console.error("Low Stock Query Error:", err);
+      return res.status(500).json({ message: "Failed to fetch low stock items" });
+    }
 
-        res.json({ lowStock: results });
-    });
+    res.json({ lowStock: results });
+  });
 });
 
 //BARDCODE SCANNER
@@ -544,19 +577,19 @@ app.get("/api/products/barcode/:barcode", (req, res) => {
       res.json(results[0]);
     });
   });
-
+    
   app.post("/inventory/transaction-scan", async (req, res) => {
   const { items } = req.body;
-
+    
   if (!items || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: "Items array is required and cannot be empty." });
   }
-
+    
   db.getConnection(async (err, rawConnection) => {
     if (err) return res.status(500).json({ error: "Database connection error: " + err.message });
-
+      
     const connection = rawConnection.promise(); // ✅ use promise-based wrapper
-
+         
     try {
       await connection.beginTransaction();
       let totalAmount = 0;
@@ -970,7 +1003,123 @@ app.get("/inventory/all-products", (req, res) => {
 });
 
 
-  
+app.post("/inventory/transaction-so", (req, res) => {
+  const { item_code, quantity, transaction_type, price, updated_by } = req.body;
+
+  if (!item_code || !quantity || !transaction_type || price === undefined || !updated_by) {
+    return res.status(400).json({
+      error: "Item code, quantity, transaction type, price, and updated_by are required.",
+    });
+  }
+
+  db.getConnection((err, connection) => {
+    if (err) return res.status(500).json({ error: "Database connection error: " + err.message });
+
+    connection.beginTransaction((err) => {
+      if (err) {
+        connection.release();
+        return res.status(500).json({ error: "Transaction start error: " + err.message });
+      }
+
+      let updateQuery;
+      let updateValues;
+
+      if (transaction_type === "issued") {
+        updateQuery = "UPDATE inventory SET quantity = quantity - ? WHERE comp_code = ? AND quantity >= ?";
+        updateValues = [quantity, item_code, quantity];
+      } else {
+        updateQuery = "UPDATE inventory SET quantity = quantity + ? WHERE comp_code = ?";
+        updateValues = [quantity, item_code];
+      }
+
+      console.log("Executing inventory update:", { query: updateQuery, values: updateValues });
+
+      connection.query(updateQuery, updateValues, (err, updateResult) => {
+        if (err) {
+          console.error("Inventory Update Error:", err);
+          return connection.rollback(() => {
+            connection.release();
+            res.status(500).json({ error: "Inventory update error: " + err.message });
+          });
+        }
+
+        if (updateResult.affectedRows === 0) {
+          return connection.rollback(() => {
+            connection.release();
+            res.status(400).json({
+              error: "Invalid operation. Not enough stock or item code does not exist.",
+            });
+          });
+        }
+
+        const insertQuery = `
+          INSERT INTO transaction (item_code, quantity, transaction_type, price, transaction_date, updated_by)
+          VALUES (?, ?, ?, ?, NOW(), ?)
+        `;
+
+        const insertValues = [item_code, quantity, transaction_type, price, updated_by];
+
+        console.log("Inserting transaction:", { query: insertQuery, values: insertValues });
+
+        connection.query(insertQuery, insertValues, (err) => {
+          if (err) {
+            console.error("Transaction Log Error:", err);
+            return connection.rollback(() => {
+              connection.release();
+              res.status(500).json({ error: "Transaction log error: " + err.message });
+            });
+          }
+
+          connection.commit((err) => {
+            if (err) {
+              console.error("Transaction Commit Error:", err);
+              return connection.rollback(() => {
+                connection.release();
+                res.status(500).json({ error: "Transaction commit error: " + err.message });
+              });
+            }
+
+            connection.release();
+            res.json({ message: "Transaction recorded successfully." });
+          });
+        });
+      });
+    });
+  });
+});
+
+
+// Fetch All Past Transactions
+app.get("/inventory/transactions-so", (req, res) => {
+    const fetchQuery = `
+        SELECT 
+            t.id, 
+            t.item_code, 
+            t.quantity, 
+            t.transaction_type, 
+            t.price,
+            t.updated_by,
+            DATE_FORMAT(t.transaction_date, '%Y-%m-%d %H:%i:%s') as transaction_date,
+            i.quantity AS remaining_quantity
+        FROM transaction t
+        LEFT JOIN inventory i ON t.item_code = i.comp_code
+        ORDER BY t.id DESC
+    `;
+
+    console.log("Fetching all transactions for stock operator with remaining quantity");
+
+    db.query(fetchQuery, (err, results) => {
+        if (err) {
+            console.error("Fetch Transactions Error:", err);
+            return res.status(500).json({ error: "Failed to fetch transactions: " + err.message });
+        }
+        res.json(results);
+    });
+});
+
+
+  app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 
 // ✅ Logout Route
 app.post("/logout", (req, res) => {

@@ -21,7 +21,7 @@ export default function ManageUsers() {
   useEffect(() => {
     fetchUsers();
   }, []);
-  
+
 
   const fetchUsers = async () => {
     setFetching(true);
@@ -54,8 +54,8 @@ export default function ManageUsers() {
 
     setLoading(true);
     try {
-      await axios.post(`${BASE_URL}/api/auth/add-user`, 
-        { name, email, password, role }, 
+      await axios.post(`${BASE_URL}/api/auth/add-user`,
+        { name, email, password, role },
         { withCredentials: true }
       );
 
@@ -75,7 +75,7 @@ export default function ManageUsers() {
 
   const handleDeleteUser = async (userId) => {
     if (!userId) return;
-    
+
     if (!window.confirm("Are you sure you want to delete this user?")) return;
 
     try {
@@ -90,8 +90,8 @@ export default function ManageUsers() {
 
   const handleUpdateRole = async (userId, newRole) => {
     try {
-      await axios.put(`${BASE_URL}/admin/users/${userId}/role`, 
-        { role: newRole }, 
+      await axios.put(`${BASE_URL}/admin/users/${userId}/role`,
+        { role: newRole },
         { withCredentials: true }
       );
       toast.success("User role updated successfully");
@@ -114,8 +114,10 @@ export default function ManageUsers() {
           <Input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
           <select className="border p-2 rounded" value={role} onChange={(e) => setRole(e.target.value)}>
             <option value="user">User</option>
+            <option value="stock_operator">Stock Operator</option>
             <option value="admin">Admin</option>
           </select>
+
           <Button onClick={handleAddUser} disabled={loading}>{loading ? "Adding..." : "Add User"}</Button>
         </div>
 
@@ -143,11 +145,13 @@ export default function ManageUsers() {
                       onChange={(e) => handleUpdateRole(user.id, e.target.value)}
                     >
                       <option value="user">User</option>
+                      <option value="stock_operator">Stock Operator</option>
                       <option value="admin">Admin</option>
                     </select>
+
                   </TableCell>
                   <TableCell>
-                    <Button 
+                    <Button
                       variant="destructive"
                       onClick={() => handleDeleteUser(user.id)}
                     >

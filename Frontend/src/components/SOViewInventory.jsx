@@ -12,7 +12,7 @@ import {
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
-const ViewAllProducts = () => {
+const StockOperatorAllProducts = () => {
   const [products, setProducts] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -35,30 +35,6 @@ const ViewAllProducts = () => {
       .catch((error) => {
         console.error("Error fetching products:", error);
       });
-  };
-
-  const handleImageUpload = async (e, compCode) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append("image", file);
-    formData.append("comp_code", compCode); // match backend
-
-    try {
-      const uploadRes = await axios.post(`${BASE_URL}/api/inventory/upload-image`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-        withCredentials: true,
-      });
-
-      if (uploadRes.data.success) {
-        fetchInventory(); // Refresh inventory to get updated image
-      }
-    } catch (err) {
-      console.error("Image upload failed:", err);
-    }
   };
 
   const filteredProducts = products.filter((item) => {
@@ -133,17 +109,6 @@ const ViewAllProducts = () => {
                     className="w-full h-80 object-cover rounded-xl border"
                   />
 
-                  {!item.image && (
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-600 mb-1">No image set. Upload one:</p>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleImageUpload(e, item.comp_code)}
-                      />
-                    </div>
-                  )}
-
                   <div className="space-y-1 text-sm text-gray-700 mt-2">
                     <p><strong>Code:</strong> {item.comp_code}</p>
                     <p><strong>Description:</strong> {item.description || "No description"}</p>
@@ -166,4 +131,4 @@ const ViewAllProducts = () => {
   );
 };
 
-export default ViewAllProducts;
+export default StockOperatorAllProducts;
