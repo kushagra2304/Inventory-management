@@ -19,6 +19,7 @@ const corsOptions = {
         const allowedOrigins = [
         //   'https://inventory-management-kush.vercel.app',
           'http://localhost:5173',
+          'http://192.168.84.169:5173', 
         ];
         if (!origin || allowedOrigins.includes(origin)) {
           callback(null, true);
@@ -28,7 +29,8 @@ const corsOptions = {
     },
     credentials: true, // Allow cookies and authorization headers
     methods: "GET,POST,PUT,DELETE",
-    allowedHeaders: "Content-Type,Authorization",
+    allowedHeaders: "Content-Type,Authorization"
+    ,
 };
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions)); // Handle preflight requests
@@ -1130,4 +1132,9 @@ app.post("/logout", (req, res) => {
 
 // ✅ Start Server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// ✅ Bind to 0.0.0.0 so it's accessible over local network (not just localhost)
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
+});
+
