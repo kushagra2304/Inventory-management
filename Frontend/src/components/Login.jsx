@@ -81,7 +81,7 @@ export default function LoginPage() {
                   : "bg-gray-200 text-gray-700"
                 }`}
             >
-              Stock Operator
+              Stock User
             </ToggleGroupItem>
 
             <ToggleGroupItem

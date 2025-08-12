@@ -180,7 +180,7 @@ const AdminDashboard = () => {
                         className="text-sm font-medium text-red-700 underline cursor-pointer"
                         onClick={() => handleProductClick(item)}
                       >
-                        {item.comp_code}
+                        {item.description}
                       </span>
                       <span className="text-xs text-gray-600">{item.quantity} left</span>
                     </div>

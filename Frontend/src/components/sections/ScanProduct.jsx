@@ -14,52 +14,111 @@ const ScanProduct = () => {
   const [error, setError] = useState("");
   const [manualCode, setManualCode] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [bill, setBill] = useState(null); // New state to hold bill details
+  const [bill, setBill] = useState(null);
   const [mobileNumber, setMobileNumber] = useState("");
+  const scannedCodeRef = useRef(null);
+const lastScanTimeRef = useRef(0);
+const scanningLockRef = useRef(false);
 
- const scanningLockRef = useRef(false);
+
+const scannerInputRef = useRef(null);
+const bufferRef = useRef("");
+
+const handleScannerInput = (e) => {
+  if (e.key === "Enter") {
+    const scannedCode = bufferRef.current.trim();
+    bufferRef.current = "";
+
+    if (scannedCode) {
+      console.log("🖨️ Scanner code received:", scannedCode);
+      fetchProduct(scannedCode);
+    }
+  } else if (e.key.length === 1) {
+    // Only append real characters, not modifiers like Shift, Control, etc.
+    bufferRef.current += e.key;
+  }
+};
+
+
+//  const hints = new Map();
+// hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+//   BarcodeFormat.CODE_128,
+//   BarcodeFormat.EAN_13,
+//   BarcodeFormat.QR_CODE,
+//   BarcodeFormat.UPC_A,
+// ]);
 
   useEffect(() => {
-    const codeReader = new BrowserMultiFormatReader();
-    let stopScanner = null;
+  const codeReader = new BrowserMultiFormatReader();
+  let stopScanner = null;
 
-    const startScanner = async () => {
-      try {
-        const resultStream = await codeReader.decodeFromVideoDevice(
-          null,
-          videoRef.current,
-          async (result, error) => {
-            if (result) {
-              const code = result.getText();
-              if (code && !scanningLockRef.current) {
-                scanningLockRef.current = true; // lock scanning
-                await fetchProduct(code);
-                setTimeout(() => {
-                  scanningLockRef.current = false; // release lock after 1 sec (adjust as needed)
-                }, 1000);
-              }
-            }
-          }
-        );
-        stopScanner = () => resultStream.stop();
-      } catch (err) {
-        console.error("Error initializing ZXing:", err);
-        setError("Failed to access camera for scanning.");
+  const startScanner = async () => {
+    if (!videoRef.current) {
+      console.warn("videoRef is not ready");
+      return;
+    }
+
+    
+
+try {
+  const resultStream = await codeReader.decodeFromVideoDevice(
+    null,
+    videoRef.current,
+    async (result, error) => {
+      console.log("🔍 Callback triggered"); // Always fires when frame is processed
+
+      if (result) {
+        const code = result.getText();
+        console.log("✅ Barcode Detected:", code);
+
+       const cleanedCode = code.replace(/[^a-zA-Z0-9]/g, '').trim();
+
+  console.log("🧼 Cleaned Barcode:", cleanedCode);
+
+  if (cleanedCode && !scanningLockRef.current) {
+    scanningLockRef.current = true;
+
+    await fetchProduct(cleanedCode);
+
+          setTimeout(() => {
+            scanningLockRef.current = false;
+            console.log("🔓 Lock released");
+          }, 1000);
+        } else {
+          console.log("🚫 Either code empty or scanning locked");
+        }
+      } else if (error) {
+        console.log("❌ No code detected:", error.message);
       }
-    };
+    }
+  );
 
-    startScanner();
-    return () => {
-      if (stopScanner) stopScanner();
-    };
-  }, []);
+  stopScanner = () => resultStream.stop();
+  console.log("📷 Scanner started");
+} catch (err) {
+  console.error("💥 Error initializing ZXing:", err);
+  setError("Failed to access camera for scanning.");
+}
+  };
+
+  // Delay to ensure video element is mounted
+  const timeoutId = setTimeout(startScanner, 500);
+
+  return () => {
+    clearTimeout(timeoutId);
+    if (stopScanner) stopScanner();
+  };
+}, []);
+
 
   const fetchProduct = async (code) => {
+    console.log(`📦 Scanning product with code: ${code}`);
     setLoading(true);
     setError("");
     try {
       const res = await axios.get(`${BASE_URL}/api/products/barcode/${code}`);
       const product = res.data;
+      console.log("✅ Product fetched:", product);
 
       if (
         !product ||
@@ -242,13 +301,13 @@ Thank you for shopping!`;
 
   return (
     <div className="p-6 space-y-6 relative">
-      <h2 className="text-3xl font-bold text-center text-gray-800 mb-4">
-        📸 Scan Product
+       <h2 className="text-3xl font-bold text-center text-gray-800 mb-4">
+        🧾 Scan Product (USB Scanner)
       </h2>
 
-      <div className="w-full h-[300px] rounded-lg border-2 border-dashed border-indigo-400 overflow-hidden">
-        <video ref={videoRef} className="w-full h-full object-cover" />
-      </div>
+      <p className="text-center text-gray-600 font-medium">
+        Connect a barcode scanner and scan a product.
+      </p>
 
       <form
         onSubmit={handleManualSubmit}
@@ -261,6 +320,14 @@ Thank you for shopping!`;
           value={manualCode}
           onChange={(e) => setManualCode(e.target.value)}
         />
+        <input
+  type="text"
+  autoFocus
+  onKeyDown={handleScannerInput}
+  className="absolute top-0 left-0 opacity-0 z-[-1]"
+  ref={scannerInputRef}
+/>
+
         <button
           type="submit"
           className="bg-indigo-600 text-white px-4 py-2 rounded-lg"

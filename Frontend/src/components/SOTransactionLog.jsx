@@ -28,7 +28,7 @@ export default function StockOperatorTransactions() {
   const [itemCode, setItemCode] = useState("");
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
-  const [transactionType, setTransactionType] = useState("issued");
+  const [transactionType, setTransactionType] = useState("received");
 
   const [itemFilter, setItemFilter] = useState("None");
   const [quantityFilter, setQuantityFilter] = useState("None");
@@ -160,15 +160,16 @@ export default function StockOperatorTransactions() {
             min="0"
             step="0.01"
           />
-          <Select value={transactionType} onValueChange={setTransactionType}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select Type" />
-            </SelectTrigger>
-            <SelectContent side="bottom" align="start" avoidCollisions={false}>
-              <SelectItem value="issued">Issued</SelectItem>
-              <SelectItem value="received">Received</SelectItem>
-            </SelectContent>
-          </Select>
+        <Select value="received" onValueChange={() => {}} disabled>
+  <SelectTrigger>
+    <SelectValue placeholder="Received" />
+  </SelectTrigger>
+  <SelectContent side="bottom" align="start" avoidCollisions={false}>
+    <SelectItem value="received">Received</SelectItem>
+  </SelectContent>
+</Select>
+
+
           <Button onClick={addTransaction}>Add Transaction</Button>
         </div>
 

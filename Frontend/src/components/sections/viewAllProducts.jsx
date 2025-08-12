@@ -103,7 +103,7 @@ const ViewAllProducts = () => {
                           : "https://via.placeholder.com/150"
                       }
                       alt="Item"
-                      className="w-full h-80 object-cover rounded-xl border"
+                      className="w-full h-80 object-contain rounded-md border bg-white p-2"
                     />
                     <h3 className="text-lg font-semibold text-gray-800 mt-4">
                       {item.description}
@@ -130,7 +130,7 @@ const ViewAllProducts = () => {
                         : "https://via.placeholder.com/150"
                     }
                     alt="Item"
-                    className="w-full h-80 object-cover rounded-xl border"
+                    className="w-full h-80 object-contain rounded-md border bg-white p-2"
                   />
 
                   {!item.image && (

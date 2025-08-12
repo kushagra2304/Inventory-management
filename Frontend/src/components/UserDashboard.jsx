@@ -111,12 +111,13 @@ const UserDashboard = () => {
     "#bfdbfe", "#93c5fd", "#60a5fa", "#3b82f6",
     "#2563eb", "#1d4ed8", "#1e40af", "#1e3a8a", "#172554",
   ];
-
+const user = JSON.parse(localStorage.getItem("user"));
+const username = user?.name || "User";
   return (
     <div className="p-6 space-y-10 bg-gray-50 min-h-screen">
       <div className="space-y-1 text-center">
         <h1 className="text-4xl font-bold text-blue-900 relative inline-block after:block after:h-1 after:bg-red-600 after:w-full after:mt-1">
-          {greeting}, User 👋
+          {greeting}, {username} 👋
         </h1>
         <p className="text-gray-500">Here’s a quick summary of your inventory.</p>
       </div>

@@ -39,7 +39,7 @@ const StockOperatorLayout = () => {
       {/* Sidebar */}
       <div className="fixed top-0 left-0 h-full w-64 bg-[#010D2A] text-white shadow-lg p-4 z-40">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-xl font-semibold">Stock Operator</h2>
+          <h2 className="text-xl font-semibold">Stock User</h2>
         </div>
 
         <nav className="flex flex-col space-y-4 text-sm font-medium">

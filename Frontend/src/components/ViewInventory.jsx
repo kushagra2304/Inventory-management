@@ -75,7 +75,7 @@ const ViewInventory = () => {
     : "https://via.placeholder.com/150"
 }
                       alt="Item"
-                      className="w-full h-80 object-cover rounded-xl border"
+                      className="w-full h-80 object-contain rounded-xl border bg-white p-2"
                     />
                     <h3 className="text-lg font-semibold text-gray-800 mt-4">
                       {item.description}
@@ -96,15 +96,17 @@ const ViewInventory = () => {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <img
-                    src={
-  item.image
-    ? `${BASE_URL}/uploads/${item.image}`
-    : "https://via.placeholder.com/150"
-}
-                    alt="Item"
-                    className="w-full h-80 object-cover rounded-xl border"
-                  />
+                  <div className="w-full h-80 flex items-center justify-center bg-white rounded-xl border">
+  <img
+    src={
+      item.image
+        ? `${BASE_URL}/uploads/${item.image}`
+        : "https://via.placeholder.com/150"
+    }
+    alt="Item"
+    className="max-h-full max-w-full object-contain"
+  />
+</div>
                   <div className="space-y-1 text-sm text-gray-700">
                     <p>
                       <strong>Code:</strong> {item.comp_code}

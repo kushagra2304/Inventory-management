@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import LoginPage from "./components/Login";
 import Dashboard from "./components/Dashboard";
+import HomePage from "./components/home";
 
 // Admin Components
 import AdminLayout from "./components/AdminLayout";
@@ -24,15 +25,18 @@ import UserScan from "./components/UserScan";
 import StockOperatorLayout from "./components/StockOperatorLayout";
 import StockOperatorTransactions from "./components/SOTransactionLog";
 import StockScan from "./components/SOScan"; 
-import StockInventoryPage from "./components/SOViewInventory"; // ← if you have one
-import StockDashboard from "./components/SODashboard"; // ← if you have one
-// If not available, use the same ViewInventory/UserScan etc.
+import StockInventoryPage from "./components/SOViewInventory"; 
+import StockDashboard from "./components/SODashboard"; 
+
+
 
 function App() {
   return (
     <Routes>
+      <Route path="/" element={<HomePage />} />
+
       {/* Login Route */}
-      <Route path="/" element={<LoginPage />} />
+      <Route path="/login" element={<LoginPage />} />
 
       {/* General Dashboard Route */}
       <Route path="/dashboard" element={<Dashboard />} />

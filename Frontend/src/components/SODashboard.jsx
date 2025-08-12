@@ -113,7 +113,7 @@ const StockOperatorDashboard = () => {
     <div className="p-6 space-y-10 bg-gray-50 min-h-screen">
       <div className="space-y-1 text-center">
         <h1 className="text-4xl font-bold text-blue-900 relative inline-block after:block after:h-1 after:bg-red-600 after:w-full after:mt-1">
-          {greeting}, Stock Operator 👋
+          {greeting}, Stock User 👋
         </h1>
         <p className="text-gray-500">
           Here’s a quick overview of current inventory status.
@@ -138,12 +138,12 @@ const StockOperatorDashboard = () => {
 
                 return (
                   <div key={idx}>
-                    <div className="flex justify-between mb-1">
+                    <div className="flex justify-between mb-1"> 
                       <span
                         className="text-sm font-medium text-red-700 underline cursor-pointer"
                         onClick={() => handleProductClick(item)}
                       >
-                        {item.comp_code}
+                        {item.description}
                       </span>
                       <span className="text-xs text-gray-600">{item.quantity} left</span>
                     </div>
