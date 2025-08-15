@@ -410,11 +410,8 @@ app.post("/inventory/transaction", (req, res) => {
                 updateValues = [quantity, item_code];
             }
 
-            console.log("Executing inventory update:", { query: updateQuery, values: updateValues });
-
             connection.query(updateQuery, updateValues, (err, updateResult) => {
                 if (err) {
-                    console.error("Inventory Update Error:", err);
                     return connection.rollback(() => {
                         connection.release();
                         res.status(500).json({ error: "Inventory update error: " + err.message });
@@ -428,39 +425,48 @@ app.post("/inventory/transaction", (req, res) => {
                     });
                 }
 
-                const insertQuery = `
-                    INSERT INTO transaction (item_code, quantity, transaction_type, price, transaction_date)
-                    VALUES (?, ?, ?, ?, NOW())
-                `;
-
-                console.log("Inserting transaction:", { query: insertQuery, values: [item_code, quantity, transaction_type, price] });
-
-                connection.query(insertQuery, [item_code, quantity, transaction_type, price], (err) => {
+                // Get the updated remaining quantity
+                connection.query("SELECT quantity FROM inventory WHERE comp_code = ?", [item_code], (err, rows) => {
                     if (err) {
-                        console.error("Transaction Log Error:", err);
                         return connection.rollback(() => {
                             connection.release();
-                            res.status(500).json({ error: "Transaction log error: " + err.message });
+                            res.status(500).json({ error: "Failed to fetch updated quantity: " + err.message });
                         });
                     }
 
-                    connection.commit((err) => {
+                    const remaining_after = rows[0]?.quantity ?? 0;
+
+                    const insertQuery = `
+                        INSERT INTO transaction (item_code, quantity, transaction_type, price, transaction_date, remaining_after)
+                        VALUES (?, ?, ?, ?, NOW(), ?)
+                    `;
+
+                    connection.query(insertQuery, [item_code, quantity, transaction_type, price, remaining_after], (err) => {
                         if (err) {
-                            console.error("Transaction Commit Error:", err);
                             return connection.rollback(() => {
                                 connection.release();
-                                res.status(500).json({ error: "Transaction commit error: " + err.message });
+                                res.status(500).json({ error: "Transaction log error: " + err.message });
                             });
                         }
 
-                        connection.release();
-                        res.json({ message: "Transaction recorded successfully." });
+                        connection.commit((err) => {
+                            if (err) {
+                                return connection.rollback(() => {
+                                    connection.release();
+                                    res.status(500).json({ error: "Transaction commit error: " + err.message });
+                                });
+                            }
+
+                            connection.release();
+                            res.json({ message: "Transaction recorded successfully.", remaining_after });
+                        });
                     });
                 });
             });
         });
     });
 });
+
 
 const multer = require("multer");
 const path = require("path");
@@ -500,13 +506,12 @@ app.get("/inventory/transactions", (req, res) => {
             t.price,
             t.updated_by,
             DATE_FORMAT(t.transaction_date, '%Y-%m-%d %H:%i:%s') as transaction_date,
-            i.quantity AS remaining_quantity
+            t.remaining_after
         FROM transaction t
-        LEFT JOIN inventory i ON t.item_code = i.comp_code
         ORDER BY t.id DESC
     `;
 
-    console.log("Fetching all transactions with remaining quantity");
+    console.log("Fetching all transactions with remaining_after value");
 
     db.query(fetchQuery, (err, results) => {
         if (err) {
@@ -516,6 +521,7 @@ app.get("/inventory/transactions", (req, res) => {
         res.json(results);
     });
 });
+
 
 
 
@@ -582,16 +588,16 @@ app.get("/api/products/barcode/:barcode", (req, res) => {
     
   app.post("/inventory/transaction-scan", async (req, res) => {
   const { items } = req.body;
-    
+
   if (!items || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: "Items array is required and cannot be empty." });
   }
-    
+
   db.getConnection(async (err, rawConnection) => {
     if (err) return res.status(500).json({ error: "Database connection error: " + err.message });
-      
-    const connection = rawConnection.promise(); // ✅ use promise-based wrapper
-         
+
+    const connection = rawConnection.promise();
+
     try {
       await connection.beginTransaction();
       let totalAmount = 0;
@@ -599,31 +605,45 @@ app.get("/api/products/barcode/:barcode", (req, res) => {
       for (const item of items) {
         const { item_code, quantity, transaction_type, price } = item;
 
-        if (!item_code || !quantity || !transaction_type || !price) {
+        if (!item_code || !quantity || !transaction_type || price === undefined) {
           throw new Error("Each item must include item_code, quantity, transaction_type, and price.");
         }
 
-        // Update inventory
-        const [updateResult] = await connection.query(
-          "UPDATE inventory SET quantity = quantity - ? WHERE comp_code = ? AND quantity >= ?",
-          [quantity, item_code, quantity]
-        );
-
-        if (updateResult.affectedRows === 0) {
-          throw new Error(`Not enough stock or invalid item code: ${item_code}`);
+        // Inventory update query
+        let updateQuery, updateValues;
+        if (transaction_type === "issued") {
+          updateQuery = "UPDATE inventory SET quantity = quantity - ? WHERE comp_code = ? AND quantity >= ?";
+          updateValues = [quantity, item_code, quantity];
+        } else {
+          updateQuery = "UPDATE inventory SET quantity = quantity + ? WHERE comp_code = ?";
+          updateValues = [quantity, item_code];
         }
 
-        // Insert into transaction log
+        const [updateResult] = await connection.query(updateQuery, updateValues);
+
+        if (updateResult.affectedRows === 0) {
+          throw new Error(`Invalid operation. Not enough stock or item code does not exist: ${item_code}`);
+        }
+
+        // Fetch updated remaining quantity
+        const [rows] = await connection.query(
+          "SELECT quantity FROM inventory WHERE comp_code = ?",
+          [item_code]
+        );
+        const remaining_after = rows[0]?.quantity ?? 0;
+
+        // Insert transaction log with remaining_after
         await connection.query(
-          "INSERT INTO transaction (item_code, quantity, transaction_type, price, transaction_date) VALUES (?, ?, ?, ?, NOW())",
-          [item_code, quantity, transaction_type, price]
+          `INSERT INTO transaction (item_code, quantity, transaction_type, price, transaction_date, remaining_after)
+           VALUES (?, ?, ?, ?, NOW(), ?)`,
+          [item_code, quantity, transaction_type, price, remaining_after]
         );
 
         totalAmount += quantity * price;
       }
 
       const billId = `BILL_${Date.now()}`;
-      await connection.commit(); // ✅ await commit
+      await connection.commit();
       rawConnection.release();
 
       return res.json({
@@ -633,14 +653,13 @@ app.get("/api/products/barcode/:barcode", (req, res) => {
       });
 
     } catch (error) {
-      await connection.rollback(); // ✅ await rollback
+      await connection.rollback();
       rawConnection.release();
       console.error("Transaction processing error:", error);
       return res.status(400).json({ error: error.message });
     }
   });
 });
-
 
 
 
@@ -1006,95 +1025,95 @@ app.get("/inventory/all-products", (req, res) => {
 
 
 app.post("/inventory/transaction-so", (req, res) => {
-  const { item_code, quantity, transaction_type, price, updated_by } = req.body;
+    const { item_code, quantity, transaction_type, price } = req.body;
 
-  if (!item_code || !quantity || !transaction_type || price === undefined || !updated_by) {
-    return res.status(400).json({
-      error: "Item code, quantity, transaction type, price, and updated_by are required.",
-    });
-  }
+    // Input validation
+    if (!item_code || !quantity || !transaction_type || price === undefined) {
+        return res.status(400).json({ error: "Item code, quantity, transaction type, and price are required." });
+    }
 
-  db.getConnection((err, connection) => {
-    if (err) return res.status(500).json({ error: "Database connection error: " + err.message });
+    db.getConnection((err, connection) => {
+        if (err) return res.status(500).json({ error: "Database connection error: " + err.message });
 
-    connection.beginTransaction((err) => {
-      if (err) {
-        connection.release();
-        return res.status(500).json({ error: "Transaction start error: " + err.message });
-      }
-
-      let updateQuery;
-      let updateValues;
-
-      if (transaction_type === "issued") {
-        updateQuery = "UPDATE inventory SET quantity = quantity - ? WHERE comp_code = ? AND quantity >= ?";
-        updateValues = [quantity, item_code, quantity];
-      } else {
-        updateQuery = "UPDATE inventory SET quantity = quantity + ? WHERE comp_code = ?";
-        updateValues = [quantity, item_code];
-      }
-
-      console.log("Executing inventory update:", { query: updateQuery, values: updateValues });
-
-      connection.query(updateQuery, updateValues, (err, updateResult) => {
-        if (err) {
-          console.error("Inventory Update Error:", err);
-          return connection.rollback(() => {
-            connection.release();
-            res.status(500).json({ error: "Inventory update error: " + err.message });
-          });
-        }
-
-        if (updateResult.affectedRows === 0) {
-          return connection.rollback(() => {
-            connection.release();
-            res.status(400).json({
-              error: "Invalid operation. Not enough stock or item code does not exist.",
-            });
-          });
-        }
-
-        const insertQuery = `
-          INSERT INTO transaction (item_code, quantity, transaction_type, price, transaction_date, updated_by)
-          VALUES (?, ?, ?, ?, NOW(), ?)
-        `;
-
-        const insertValues = [item_code, quantity, transaction_type, price, updated_by];
-
-        console.log("Inserting transaction:", { query: insertQuery, values: insertValues });
-
-        connection.query(insertQuery, insertValues, (err) => {
-          if (err) {
-            console.error("Transaction Log Error:", err);
-            return connection.rollback(() => {
-              connection.release();
-              res.status(500).json({ error: "Transaction log error: " + err.message });
-            });
-          }
-
-          connection.commit((err) => {
+        connection.beginTransaction((err) => {
             if (err) {
-              console.error("Transaction Commit Error:", err);
-              return connection.rollback(() => {
                 connection.release();
-                res.status(500).json({ error: "Transaction commit error: " + err.message });
-              });
+                return res.status(500).json({ error: "Transaction start error: " + err.message });
             }
 
-            connection.release();
-            res.json({ message: "Transaction recorded successfully." });
-          });
+            let updateQuery;
+            let updateValues;
+
+           if (transaction_type === "issued") {
+    updateQuery = "UPDATE inventory SET quantity = quantity - ? WHERE item_code = ? AND quantity >= ?";
+    updateValues = [quantity, item_code, quantity];
+} else {
+    updateQuery = "UPDATE inventory SET quantity = quantity + ? WHERE item_code = ?";
+    updateValues = [quantity, item_code];
+}
+
+            connection.query(updateQuery, updateValues, (err, updateResult) => {
+                if (err) {
+                    return connection.rollback(() => {
+                        connection.release();
+                        res.status(500).json({ error: "Inventory update error: " + err.message });
+                    });
+                }
+
+                if (updateResult.affectedRows === 0) {
+                    return connection.rollback(() => {
+                        connection.release();
+                        res.status(400).json({ error: "Invalid operation. Not enough stock or item code does not exist." });
+                    });
+                }
+
+                // Get the updated remaining quantity
+                connection.query("SELECT quantity FROM inventory WHERE item_code = ?", [item_code], (err, rows) => {
+                    if (err) {
+                        return connection.rollback(() => {
+                            connection.release();
+                            res.status(500).json({ error: "Failed to fetch updated quantity: " + err.message });
+                        });
+                    }
+
+                    const remaining_after = rows[0]?.quantity ?? 0;
+
+                    const insertQuery = `
+                        INSERT INTO transaction (item_code, quantity, transaction_type, price, transaction_date, remaining_after)
+                        VALUES (?, ?, ?, ?, NOW(), ?)
+                    `;
+
+                    connection.query(insertQuery, [item_code, quantity, transaction_type, price, remaining_after], (err) => {
+                        if (err) {
+                            return connection.rollback(() => {
+                                connection.release();
+                                res.status(500).json({ error: "Transaction log error: " + err.message });
+                            });
+                        }
+
+                        connection.commit((err) => {
+                            if (err) {
+                                return connection.rollback(() => {
+                                    connection.release();
+                                    res.status(500).json({ error: "Transaction commit error: " + err.message });
+                                });
+                            }
+
+                            connection.release();
+                            res.json({ message: "Transaction recorded successfully.", remaining_after });
+                        });
+                    });
+                });
+            });
         });
-      });
     });
-  });
 });
 
 
 // Fetch All Past Transactions
 app.get("/inventory/transactions-so", (req, res) => {
     const fetchQuery = `
-        SELECT 
+       SELECT 
             t.id, 
             t.item_code, 
             t.quantity, 
@@ -1102,9 +1121,8 @@ app.get("/inventory/transactions-so", (req, res) => {
             t.price,
             t.updated_by,
             DATE_FORMAT(t.transaction_date, '%Y-%m-%d %H:%i:%s') as transaction_date,
-            i.quantity AS remaining_quantity
+            t.remaining_after
         FROM transaction t
-        LEFT JOIN inventory i ON t.item_code = i.comp_code
         ORDER BY t.id DESC
     `;
 

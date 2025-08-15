@@ -48,17 +48,17 @@ export default function ManageTransactions() {
       }
 
       setTransactions(
-        response.data.map((txn) => ({
-          id: txn.id,
-          itemCode: txn.item_code || "Unknown",
-          quantity: txn.quantity || "0",
-          price: txn.price !== undefined ? parseFloat(txn.price).toFixed(2) : "0.00",
-          type: txn.transaction_type || "N/A",
-          date: new Date(txn.transaction_date).toLocaleDateString(),
-          remaining: txn.remaining_quantity ?? "N/A",
-          updatedBy: txn.updated_by || "System",
-        }))
-      );
+  response.data.map((txn) => ({
+    id: txn.id,
+    itemCode: txn.item_code || "Unknown",
+    quantity: txn.quantity || "0",
+    price: txn.price !== undefined ? parseFloat(txn.price).toFixed(2) : "0.00",
+    type: txn.transaction_type || "N/A",
+    date: new Date(txn.transaction_date).toLocaleDateString(),
+    remaining: txn.remaining_after ?? "N/A", // ✅ changed to match new backend column
+    updatedBy: txn.updated_by || "System",
+  }))
+);
     } catch (error) {
       console.error("Error fetching transactions:", error);
       toast.error("Failed to load transactions");

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import axios from "axios";
+import upgov from "../assets/upgov.jpg"; // Ensure you have this image in your assets
 const BASE_URL = import.meta.env.VITE_API_URL;
 
 export default function LoginPage() {
@@ -48,8 +49,14 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-blue-100 px-4">
       <Card className="w-full max-w-md bg-white p-6 rounded-2xl shadow-lg">
-        <CardHeader>
+        <CardHeader className="flex items-center justify-between">
+    <img 
+      src="/upgov1.jpg" 
+      alt="Logo"
+      className="w-20 h-20 object-contain"
+    />
           <CardTitle className="text-center text-2xl font-bold text-[#010D2A]">
+            
             <span className="inline-block text-4xl font-bold text-[#010D2A] border-b-4 border-red-600 pb-1">
               SA <span className="text-red-600 text-5xl">R</span> AS
             </span>
